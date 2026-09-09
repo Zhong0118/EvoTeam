@@ -1,0 +1,56 @@
+{
+  "evolution_id": "evolution-180c8c1485f6d874fa3a97fda442f84929a3420b174310519ed4f69a71c19368",
+  "trigger": {
+    "trigger_id": "trigger-5735808a9ff75cb57335984a16d161fc4e867df8babaae97c4ad0ff5d3aef18e",
+    "strategy": {
+      "strategy_id": "project-planning",
+      "version": 0
+    },
+    "policy_ref": {
+      "id": "illustrative-only",
+      "version": "1"
+    },
+    "trigger_type": "repeated_failure",
+    "task_scope": "project_planning",
+    "evidence_run_ids": [
+      "e08ac62e-a333-428d-937b-90f683e8e6fe",
+      "fc1be45c-59c3-487b-8f56-b0fb4b77e6b7",
+      "b394c02f-6523-465f-9409-d9cc3e755196"
+    ],
+    "reason": "duration_mismatch 在 3 个 Run 中重复出现"
+  },
+  "attribution_refs": [
+    "failure-attribution-e306700787d8814aab6d3d5617c9f819a6e31e62ae49a1934f10a6e91b254f29",
+    "improvement-attribution-dd577ffddfd560ef68b7a842540a7b29fc6807b1816a9ef740726f58ab9d285d"
+  ],
+  "proposal_refs": [
+    "mutation-638315cfbe655afb16403214e202641239dedf26c70cdf5fc51ac683e2fd39c1"
+  ],
+  "candidates": [
+    {
+      "strategy_id": "project-planning",
+      "version": 1
+    }
+  ],
+  "validation_refs": [
+    "0d3c7810-5600-49ed-a709-21953695ec27"
+  ],
+  "gate_results": [
+    {
+      "validation_id": "0d3c7810-5600-49ed-a709-21953695ec27",
+      "decision": "fail",
+      "policy_ref": {
+        "id": "project-planning-gate",
+        "version": "demo-1"
+      },
+      "reasons": [
+        "Token相对增幅=0.144262",
+        "延迟相对增幅=0.000000",
+        "Token增幅超过允许上限"
+      ],
+      "improvement_attribution_ref": "improvement-attribution-dd577ffddfd560ef68b7a842540a7b29fc6807b1816a9ef740726f58ab9d285d"
+    }
+  ],
+  "promoted": null,
+  "rollback_target": null
+}

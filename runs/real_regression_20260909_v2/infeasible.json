@@ -1,0 +1,69 @@
+{
+  "run_id": "ffef4cc8-9774-43ba-ae65-c60c5133c30a",
+  "task_id": "infeasible-delivery-diagnostic",
+  "task_scope": "project_planning",
+  "strategy": {
+    "strategy_id": "project-planning",
+    "version": 0
+  },
+  "purpose": "online",
+  "status": "completed",
+  "sealed_at": "2026-09-09T12:57:20.737981Z",
+  "snapshot_ref": "sqlite:run:ffef4cc8-9774-43ba-ae65-c60c5133c30a",
+  "trace_refs": [
+    "512c08ed-13c2-4acb-9080-3e86d1ced8dc",
+    "93b79f7c-67b8-4b71-b33a-b526d521b393",
+    "dffafd3f-682e-4b24-992a-bc0efca71d86",
+    "9c69d252-3fa2-4ae0-995e-e729f4c577b8",
+    "4a324b5b-b673-4594-9365-a49cdd364ed7",
+    "7371f5e6-0898-4263-a360-256cf286c579",
+    "54d0c4ea-9201-4903-8614-349f633422f6",
+    "bd39952d-cb72-4d6c-ab3d-166d8bc97ab7",
+    "04038d3d-82b5-4036-aa60-1e3f5840b6a7",
+    "68b34114-cd69-4169-b815-2afe2759da57",
+    "5cc9925f-7781-4ea9-991b-8b6a30e7fc17",
+    "b737d10a-1c53-4697-942f-38a8ebf3c6d6",
+    "f6c2718e-8a25-41e4-9018-f24bc4693d24",
+    "4261d25d-0e6d-40c1-a50f-945ee6daaaa7",
+    "89272737-6601-47af-a876-945abc377722",
+    "588b29bf-5d2f-4a0e-bacf-e5e3e79e7032",
+    "4bc82a10-11e4-4ac7-b536-ed16f1d6566d",
+    "7256f37e-e0a7-4890-804c-e3b320df9a3c",
+    "9c0ba0ec-8d46-437b-9a4d-9f73f32d7de8",
+    "94424ec5-f328-46bc-8678-e1eea6432729"
+  ],
+  "evaluation": {
+    "run_id": "ffef4cc8-9774-43ba-ae65-c60c5133c30a",
+    "evaluator_ref": {
+      "id": "project-planning-rules",
+      "version": "1"
+    },
+    "metrics": {
+      "quality": null,
+      "success": false,
+      "hard_constraint_errors": 1,
+      "tokens": 5077,
+      "cost": null,
+      "latency_seconds": 12.622008249978535,
+      "agent_count": 5,
+      "tool_calls": 0,
+      "retry_count": 1
+    },
+    "issues": [
+      {
+        "code": "duration_mismatch",
+        "message": "工期与输入要求不符",
+        "severity": "error",
+        "evidence_refs": [
+          "work:build"
+        ],
+        "node_id": null
+      }
+    ],
+    "missing_metrics": [
+      "quality",
+      "cost"
+    ]
+  },
+  "output_ref": null
+}

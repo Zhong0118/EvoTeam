@@ -11,8 +11,8 @@
           "version": "v0"
         },
         "model_ref": {
-          "id": "planning-model",
-          "version": "deployment-1"
+          "id": "deepseek-v4-flash",
+          "version": "api-2026-09"
         },
         "skill_refs": [],
         "tool_policy": {
@@ -34,8 +34,8 @@
           "version": "v0"
         },
         "model_ref": {
-          "id": "planning-model",
-          "version": "deployment-1"
+          "id": "deepseek-v4-flash",
+          "version": "api-2026-09"
         },
         "skill_refs": [],
         "tool_policy": {
@@ -57,8 +57,8 @@
           "version": "v0"
         },
         "model_ref": {
-          "id": "planning-model",
-          "version": "deployment-1"
+          "id": "deepseek-v4-flash",
+          "version": "api-2026-09"
         },
         "skill_refs": [],
         "tool_policy": {

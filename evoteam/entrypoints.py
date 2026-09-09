@@ -1,12 +1,13 @@
-"""正式单机入口：显式登记初始策略，然后执行任务；不自动晋级或演进。"""
+"""正式单机入口：在线执行与显式观察/演进严格分离。"""
 
 from pathlib import Path
 
 from evoteam.composition import build_application
-from evoteam.domain.evolution import MonitorResult
+from evoteam.domain.evolution import EvolutionRecord, MonitorResult, ValidationPlan
 from evoteam.domain.run import RunPurpose, SealedRun
 from evoteam.domain.strategy import Strategy, StrategyStatus
 from evoteam.domain.task import Task
+from evoteam.evolution.gate import GatePolicy
 from evoteam.monitoring.policy import EvolutionPolicy
 from evoteam.orchestration.orchestrator import validate_v0
 from evoteam.runtime.openjiuwen.adapter import OpenJiuwenRuntimeAdapter
@@ -64,5 +65,35 @@ async def observe_history(
             strategy_id=strategy_id, task_scope=task_scope, policy=policy
         )
         return observation.result
+    finally:
+        await storage.close()
+
+
+async def evolve_history(
+    database: Path,
+    *,
+    strategy_id: str,
+    task_scope: str,
+    policy: EvolutionPolicy,
+    validation_plan: ValidationPlan,
+    gate_policy: GatePolicy,
+    settings: Settings,
+) -> EvolutionRecord | None:
+    """显式启动一次受限离线演进；只有已有 Trigger 时才调用模型验证。"""
+    if not database.is_file():
+        raise ValueError("数据库不存在")
+    model = settings.runtime_model()
+    storage = SQLiteStorage(f"sqlite:///{database.resolve()}")
+    try:
+        ports = await storage.open()
+        await storage.require_model(model)
+        app = build_application(runtime=OpenJiuwenRuntimeAdapter(models=(model,)), storage=ports)
+        return await app.evolution.evolve_if_needed(
+            strategy_id=strategy_id,
+            task_scope=task_scope,
+            policy=policy,
+            validation_plan=validation_plan,
+            gate_policy=gate_policy,
+        )
     finally:
         await storage.close()

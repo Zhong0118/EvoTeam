@@ -22,6 +22,7 @@ from evoteam.domain.run import RunPurpose, RunResult, RunStatus, SealedRun
 from evoteam.domain.strategy import Strategy, StrategyStatus
 from evoteam.domain.task import Task, TaskProfile, TaskType
 from evoteam.evolution.gate import GatePolicy
+from evoteam.evolution.validator import Validator
 from evoteam.monitoring.policy import EvolutionPolicy
 
 
@@ -351,8 +352,9 @@ async def test_composition_shares_execution_and_evaluation_without_starting_io()
     stores = StoragePorts(runs=calls, strategies=calls, experiences=calls, evolutions=calls)
     runtime = OpenJiuwenRuntimeAdapter()
     app = build_application(runtime=runtime, storage=stores)
-    assert app.tasks.orchestrator is app.evolution.manager.validator.orchestrator
-    assert app.tasks.evaluator is app.evolution.manager.validator.evaluator
+    validator = cast(Validator, app.evolution.manager.validator)
+    assert app.tasks.orchestrator is validator.orchestrator
+    assert app.tasks.evaluator is validator.evaluator
     assert app.tasks.orchestrator.runtime is runtime
     assert calls.mock_calls == []
 

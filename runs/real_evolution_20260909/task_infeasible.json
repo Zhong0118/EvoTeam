@@ -1,0 +1,33 @@
+{
+  "task_id": "infeasible-delivery-diagnostic",
+  "task_type": "project_planning",
+  "instruction": "制定交付计划；如果硬约束无法同时满足，仍按输出 Schema 给出最接近的计划并在 adjustments 和 validation_notes 中明确不可行原因。",
+  "input_schema": {"id": "project-planning-input", "version": "1"},
+  "inputs": {
+    "goal": "在现有资源下完成唯一工作项",
+    "deadline_hour": 4,
+    "budget_minor": 400,
+    "currency": "CNY",
+    "people": [
+      {
+        "person_id": "alice",
+        "skills": ["python"],
+        "hourly_cost_minor": 100,
+        "available_from_hour": 0,
+        "available_until_hour": 4
+      }
+    ],
+    "work_items": [
+      {
+        "work_id": "build",
+        "description": "实现并交付",
+        "duration_hours": 6,
+        "required_skills": ["python"],
+        "dependencies": []
+      }
+    ],
+    "milestones": [
+      {"milestone_id": "delivery", "work_ids": ["build"], "deadline_hour": 4}
+    ]
+  }
+}

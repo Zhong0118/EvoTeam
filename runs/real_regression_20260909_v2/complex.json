@@ -1,0 +1,53 @@
+{
+  "run_id": "2383d4b3-734f-419c-9315-54915c09a178",
+  "task_id": "complex-release-demo",
+  "task_scope": "project_planning",
+  "strategy": {
+    "strategy_id": "project-planning",
+    "version": 0
+  },
+  "purpose": "online",
+  "status": "completed",
+  "sealed_at": "2026-09-09T12:56:37.859907Z",
+  "snapshot_ref": "sqlite:run:2383d4b3-734f-419c-9315-54915c09a178",
+  "trace_refs": [
+    "8662acc6-e41b-45c8-8042-3398b7297ded",
+    "2544b2a2-cf59-4cf6-b907-212b5519eded",
+    "f3ba49dc-68dd-431f-9faa-ead28ad0c952",
+    "224266f2-3e92-459a-bd9a-a9055b39a455",
+    "472b09c0-a03f-4e95-ae2b-a57314720754",
+    "3b1783bc-9b52-4387-9c29-657685065e61",
+    "3b9c90d1-4359-49bf-ad89-cb5874f7f326",
+    "1c8c1a19-d3f0-4642-86b8-ff0c8aeecd9f",
+    "b038dcdf-9cc2-4efb-a0e5-78efce0cbc83",
+    "98cab4ec-48bd-4a70-861a-8453bcacabff",
+    "af454edc-15ca-4e52-9882-fafb57662c98",
+    "0ad96e03-c1fe-49a0-ba8c-ddb45429206c",
+    "393420a3-07ae-43cd-b8da-c7c020bdfbe0",
+    "4689a125-30af-4439-b590-c7d57d3fcd7a"
+  ],
+  "evaluation": {
+    "run_id": "2383d4b3-734f-419c-9315-54915c09a178",
+    "evaluator_ref": {
+      "id": "project-planning-rules",
+      "version": "1"
+    },
+    "metrics": {
+      "quality": null,
+      "success": true,
+      "hard_constraint_errors": 0,
+      "tokens": 4879,
+      "cost": null,
+      "latency_seconds": 9.180163249955513,
+      "agent_count": 3,
+      "tool_calls": 0,
+      "retry_count": 0
+    },
+    "issues": [],
+    "missing_metrics": [
+      "quality",
+      "cost"
+    ]
+  },
+  "output_ref": null
+}

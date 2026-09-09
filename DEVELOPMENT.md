@@ -2,7 +2,7 @@
 
 ## 当前仓库状态
 
-已有项目规划 v1 契约、规则检查/评价、固定三角色 Orchestrator、SQLite 在线封存和无模型演示。已接真实 openJiuwen ReActAgent、模型登记、init/run/observe、重复错误聚合和持久化冷却。SDK 使用本地 HTTP 服务联调；外部模型实测、其他监控信号及离线演进仍待完成，没有 HTTP 服务或前端工程。
+已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已完整落库；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 和前端仍待完成。
 
 开发前阅读 README、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；演进和评价工作同时阅读 EXPERIMENTS、DECISIONS。产品与架构按最终讨论冻结，现有骨架按 P0–P5 逐步填充逻辑。
 
@@ -31,7 +31,7 @@ uv sync
 | Python | .python-version 指向 3.12；pyproject 当前要求 >=3.12，项目验证以 3.12 为准 |
 | Agent Runtime | openJiuwen Core，只有 runtime/openjiuwen Adapter 直接使用 SDK |
 | 数据契约 | Pydantic；Domain、Strategy 和证据对象由 EvoTeam 自己维护 |
-| 后端相关依赖 | 已声明 FastAPI、Uvicorn、HTTPX、SSE、Pydantic Settings，尚无服务实现 |
+| 后端相关依赖 | 已实现最小 FastAPI health/init/run/observe/evolve 接口；暂无鉴权与前端 |
 | 持久化相关依赖 | 已声明 SQLAlchemy、Alembic；首轮按单机 SQLite 路径实现 |
 | 前端 | React + TypeScript 仍为候选，仓库没有前端工程；具体组件在 P5 确定 |
 | 检查工具 | pytest、pytest-asyncio、Ruff、Pyright 已配置，基础契约与边界测试位于 tests/ |
@@ -73,9 +73,10 @@ uv run python -m evoteam roles
 uv run python -m evoteam v0 --model-id preview --model-version draft
 uv run python main.py --help
 uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
+uv run python -m evoteam serve
 ```
 
-`roles` 列出固定职责池；`v0` 输出可序列化的三节点 DRAFT 配置。preview/draft 是预览占位值，不是项目选定模型。`demo` 用手写产物运行真实调度与归档，要求全新数据库路径。正式 `init/run/observe` 的配置与命令见系统运行指南；尚无可用的 `evolve` 命令或 HTTP 业务端点。
+`roles` 列出固定职责池；`v0` 输出可序列化的三节点 DRAFT 配置。preview/draft 是预览占位值，不是项目选定模型。`demo` 用手写产物运行真实调度与归档，要求全新数据库路径。正式 `init/run/observe/evolve` 的配置与命令见系统运行指南；`serve` 提供本地 FastAPI 包装。
 
 初始骨架约定：缺失预算为 None，表示尚待配置；Retry/Replan 先为 0，表示未开启。这些是离线配置起点，不是实验校准结论。正式 v0 进入 CURRENT 前必须明确运行参数、能力引用和校验。项目采用仓库内 `python -m evoteam` 运行，暂不增加 wheel 构建或发布配置。
 
@@ -89,8 +90,8 @@ uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 | --- | --- |
 | `main.py` | 兼容仓库入口，转发 CLI |
 | `evoteam/__main__.py` | 支持 python -m evoteam；导入不执行命令 |
-| `evoteam/cli.py` | roles / v0 配置预览与 demo 无模型演示 |
-| `evoteam/entrypoints.py` | 正式 init/run/observe；登记模型绑定，执行与观察分离 |
+| `evoteam/cli.py` | roles / v0 / demo 及正式 init/run/observe/evolve 命令 |
+| `evoteam/entrypoints.py` | 正式 init/run/observe/evolve；登记模型绑定，在线与离线分离 |
 | `evoteam/demo.py` | 在全新数据库运行手写示例，不污染真实历史 |
 | `evoteam/bootstrap.py` | 构建固定 Planner → Executor → Critic DRAFT v0 |
 | `evoteam/settings.py` | 环境配置及 SecretStr 凭据字段，无全局实例 |
@@ -113,7 +114,7 @@ uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 | `domain/experience.py` | 正负经验、模式、Origin/Control/贡献/改进归因数据 |
 | `domain/evolution.py` | Trigger、MonitorResult、Mutation 白名单、验证计划/结果、Gate、EvolutionRecord |
 
-配置模型采用 frozen 与 tuple，运行对象使用独立实例和容器。SealedRun 保存不可变元数据与产物引用；SQLite 已实现不可覆盖、封存事务和完整快照落盘。当前 Orchestrator 校验固定 v0 支持范围；通用候选图和能力注册校验仍待实现。
+配置模型采用 frozen 与 tuple，运行对象使用独立实例和容器。SealedRun 保存不可变元数据与产物引用；SQLite 已实现不可覆盖、封存事务和完整快照落盘。Orchestrator 只接受固定三节点链或新增一个 Verifier 的四节点 DAG；任意图和动态能力注册仍不开放。
 
 ### 能力与 Runtime
 
@@ -134,7 +135,7 @@ uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 | 文件 | 当前方法与后续职责 |
 | --- | --- |
 | `orchestration/task_analyzer.py` | analyze：校验项目规划 v1 输入并提取约束引用 |
-| `orchestration/orchestrator.py` | execute：已实现固定 v0、消息来源、Token/超时检查及有界清理 |
+| `orchestration/orchestrator.py` | execute：已实现受限 DAG、多上游来源、一次 Critic 返工、Token/超时及有界清理 |
 | `evaluation/evaluator.py` | Evaluator Protocol；evaluate 已独立校验唯一计划、保留失败，未知质量/用量保持 None |
 | `evaluation/metrics.py` | MetricsCollector.collect：汇总唯一运行产物用量和执行耗时，失败缺失用量不伪造 |
 | `experience/store.py` | ExperienceStore Protocol：保存正负经验及模式 |
@@ -148,19 +149,20 @@ uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 
 | 文件 | 当前方法与后续职责 |
 | --- | --- |
-| `evolution/attribution.py` | analyze_failure / analyze_contribution / analyze_improvement |
-| `evolution/mutation.py` | propose / materialize：白名单提案与隔离 Candidate |
-| `evolution/validator.py` | validate：复用 Orchestrator + Evaluator 做配对实验 |
-| `evolution/gate.py` | GatePolicy 与 decide；只返回规则裁决，不切换版本 |
-| `evolution/lifecycle.py` | promote / reject / transition / rollback；后续校验合法转换 |
-| `evolution/manager.py` | evolve：Trigger 后组织归因、候选、验证与生命周期 |
+| `evolution/attribution.py` | 已实现规则型 Failure/Improvement 归因；Contribution 明确返回待补消融证据 |
+| `evolution/mutation.py` | 已实现 UPDATE_PROMPT 与新增 Verifier 的 ADD_AGENT_CONFIG 提案、物化和静态检查 |
+| `evolution/validator.py` | 已实现同数据集 Current/Candidate 配对执行、评价、汇总与 validation 封存 |
+| `evolution/gate.py` | 已实现质量、硬约束、Token、延迟的预注册规则裁决 |
+| `evolution/lifecycle.py` | 已实现 Promote / Reject / Stable / Reopen / Rollback 合法转换 |
+| `evolution/manager.py` | 已实现多个单因素候选的生成、独立验证、确定性选择和统一生命周期收尾 |
 
 ### 持久化与测试
 
 | 文件 | 当前方法与后续职责 |
 | --- | --- |
 | `storage/protocol.py` | RunStore（含 seal_run 原子封存）、StrategyStore、EvolutionStore；显式用途与生命周期契约 |
-| `storage/sqlite.py` | 显式 initialize / open / close；六张表、在线封存、模型绑定、经验与监控检查点；治理存储仍占位 |
+| `storage/sqlite.py` | 运行、模型、经验、监控、唯一版本号、完整演进产物及生命周期原子切换 |
+| `tests/test_evolution.py` | 无 API 的 Prompt 演进、配对验证、隔离、晋级与唯一版本号测试 |
 | `tests/test_skeleton.py` | 初始契约、边界及 CLI 测试，不调用模型或数据库 |
 | `tests/test_planning.py` | 项目规划输入与约束正反例、独立评价 |
 | `tests/test_online.py` | 固定调度 + SQLite 端到端、故障、事务、快照、取消及 demo CLI |
@@ -170,14 +172,14 @@ uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 | `tests/test_live_provider.py` | 显式启用的真实模型冒烟；默认跳过 |
 | `tests/test_application.py` | 使用记录调用的替身验证跨模块顺序、隔离、版本竞争与异常传播 |
 
-上表中省略 `evoteam/` 的相对路径均以该包为根。Protocol 中的省略号只声明接口；未实现的算法骨架使用 `NotImplementedError`，不能返回假评分、假晋级或静默成功。应用服务只调用注入的组件，并不使那些组件自动变成已实现。
+上表中省略 `evoteam/` 的相对路径均以该包为根。Protocol 中的省略号只声明接口。当前结构演进只允许新增唯一 Verifier 及固定必要连边，不表示任意拓扑、Tool Policy 与贡献消融已经实现。
 
 
 ## 模块关系与下一步
 
 模块图、在线与离线路径、项目规划 v1 字段语义、故障处理及贡献者阅读顺序统一放在 [系统运行指南](docs/SYSTEM_WALKTHROUGH.md)，本文件只维护环境与文件索引。
 
-真实 SDK 与本地协议服务的在线闭环已经通过集成测试；下一项是填写实际模型配置、运行固定数据集并校准基线，再扩展监控信号及离线演进。总 Token 预算目前为响应后检测，只有输出 Token 上限传入请求；输入 Token 预估和严格费用上限尚未实现。P0/P1 的通用能力注册、迁移和恢复等尚未全部完成，阶段验收见 ROADMAP。
+真实 SDK 在线闭环、DeepSeek Gate Reject 实验及 Fake Runtime 的多候选结构演进均已通过。下一项是扩充独立 History/Validation 数据并校准 Policy/Gate，再扩展监控信号和 Tool/Skill Candidate。总 Token 预算目前为响应后检测，只有输出 Token 上限传入请求；输入 Token 预估和严格费用上限尚未实现。
 
 SDK 0.1.17.post1 的导入和 SSL 代码会产生上游弃用警告，当前测试保留这些警告；不将其隐藏成无警告结果。
 

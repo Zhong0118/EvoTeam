@@ -21,6 +21,8 @@ from evoteam.domain.role import RoleType
 from evoteam.runtime.models import ModelEndpoint
 from evoteam.runtime.protocol import RuntimeAgent, RuntimeContext
 
+MAX_REACT_ITERATIONS = 3
+
 
 @dataclass
 class _Session:
@@ -52,8 +54,13 @@ class OpenJiuwenRuntimeAdapter:
             or config.skill_refs
             or config.runtime_config.max_retries
         ):
-            raise ValueError("当前 Adapter 只支持无 Tool / Skill / Retry 的固定 v0")
-        if config.role not in {RoleType.PLANNER, RoleType.EXECUTOR, RoleType.CRITIC}:
+            raise ValueError("当前 Adapter 只支持无 Tool / Skill / Runtime Retry")
+        if config.role not in {
+            RoleType.PLANNER,
+            RoleType.EXECUTOR,
+            RoleType.VERIFIER,
+            RoleType.CRITIC,
+        }:
             raise ValueError("当前 Adapter 尚未登记该角色的输出 Schema")
         load_prompt(config.prompt_ref)
         # 延迟导入，普通包导入、配置预览和 Fake 测试不初始化 SDK。
@@ -98,6 +105,7 @@ class OpenJiuwenRuntimeAdapter:
         schemas = {
             RoleType.PLANNER: (ANALYSIS_SCHEMA, PlanningAnalysis),
             RoleType.EXECUTOR: (PLAN_SCHEMA, ProjectPlan),
+            RoleType.VERIFIER: (REVIEW_SCHEMA, PlanningReview),
             RoleType.CRITIC: (REVIEW_SCHEMA, PlanningReview),
         }
         schema_ref, schema = schemas[state.config.role]
@@ -123,6 +131,9 @@ class OpenJiuwenRuntimeAdapter:
                 "top_p": endpoint.top_p,
                 "max_tokens": output_cap,
                 "response_format": {"type": "json_object"},
+                # DeepSeek V4 默认启用思考模式，短预算会被 reasoning tokens 耗尽，
+                # 导致结构化正文为空。v0 需要低成本、确定性的 JSON 输出。
+                "extra_body": {"thinking": {"type": "disabled"}},
             }
         )
         prompt = (
@@ -136,7 +147,9 @@ class OpenJiuwenRuntimeAdapter:
                 model_name=endpoint.model_name,
                 model_client_config=client,
                 model_config_obj=request,
-                max_iterations=1,
+                # 给 ReAct 留出有限的内部推理/收尾空间；EvoTeam 仍禁止未授权
+                # Tool，且 Runtime 句柄仍只允许一次 invoke，避免无界循环。
+                max_iterations=MAX_REACT_ITERATIONS,
                 prompt_template=[{"role": "system", "content": prompt}],
             )
         )

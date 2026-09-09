@@ -49,7 +49,7 @@ class MutationType(StrEnum):
 
 
 class MutationProposal(FrozenModel):
-    """提案描述；操作专属 payload/schema 与执行器留到 P3。"""
+    """受白名单约束的最小修改提案；首版只执行 UPDATE_PROMPT。"""
 
     proposal_id: Identifier
     parent: StrategyRef

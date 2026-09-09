@@ -1,0 +1,6 @@
+{
+  "dataset_ref": {"id": "project-planning-validation", "version": "1"},
+  "evaluator_ref": {"id": "project-planning-rules", "version": "1"},
+  "repeats": 1,
+  "seeds": [7]
+}

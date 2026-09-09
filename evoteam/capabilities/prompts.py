@@ -9,6 +9,7 @@ PROMPT_FILES = MappingProxyType(
     {
         ("planner", "v0"): "planner/v0.md",
         ("executor", "v0"): "executor/v0.md",
+        ("executor", "v1-resource-check"): "executor/v1-resource-check.md",
         ("critic", "v0"): "critic/v0.md",
         ("verifier", "v0"): "verifier/v0.md",
     }

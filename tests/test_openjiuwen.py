@@ -12,7 +12,7 @@ from evoteam.bootstrap import build_v0_strategy
 from evoteam.domain.agent import AgentMessage
 from evoteam.domain.common import AssetRef, RunBudget
 from evoteam.domain.planning import AGENT_INPUT_SCHEMA, ANALYSIS_SCHEMA
-from evoteam.runtime.openjiuwen.adapter import OpenJiuwenRuntimeAdapter
+from evoteam.runtime.openjiuwen.adapter import MAX_REACT_ITERATIONS, OpenJiuwenRuntimeAdapter
 from evoteam.runtime.protocol import RuntimeContext
 
 
@@ -116,6 +116,10 @@ def context():
     )
 
 
+def test_react_iterations_are_bounded_but_not_single_step():
+    assert MAX_REACT_ITERATIONS == 3
+
+
 @pytest.mark.asyncio
 async def test_real_sdk_sends_prompt_json_contract_output_limit_and_reports_usage():
     with completion_server() as (url, requests):
@@ -131,6 +135,7 @@ async def test_real_sdk_sends_prompt_json_contract_output_limit_and_reports_usag
         assert len(requests) == 1
         assert requests[0]["max_tokens"] <= 30
         assert requests[0]["response_format"] == {"type": "json_object"}
+        assert requests[0]["thinking"] == {"type": "disabled"}
         assert requests[0].get("tools") in (None, [])
         assert "constraint_refs" in requests[0]["messages"][0]["content"]
         await adapter.close(handle)

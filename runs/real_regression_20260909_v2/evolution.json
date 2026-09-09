@@ -1,0 +1,75 @@
+{
+  "evolution_id": "evolution-22241b76143e19ee3b571a27854a3f98c6566d03471e3c842d800ee912ec72df",
+  "trigger": {
+    "trigger_id": "trigger-1ce7983b4045be8a3f4d2b325010d2b7e14604a8d153bf5508aa3fa4dfccc4a8",
+    "strategy": {
+      "strategy_id": "project-planning",
+      "version": 0
+    },
+    "policy_ref": {
+      "id": "illustrative-only",
+      "version": "1"
+    },
+    "trigger_type": "repeated_failure",
+    "task_scope": "project_planning",
+    "evidence_run_ids": [
+      "ffef4cc8-9774-43ba-ae65-c60c5133c30a"
+    ],
+    "reason": "duration_mismatch 在 1 个 Run 中重复出现"
+  },
+  "attribution_refs": [
+    "failure-attribution-59c9bb1d3cb56fba349033afa4bb41da270d0faf9b9596ad453bb2b35ab95cc2",
+    "improvement-attribution-8822ffaef0087ff7d23dbccb5052feea90ddcb4dfdb1e06d3bd34ba64d3c710f",
+    "improvement-attribution-6602b4bdeac64a846c4efd0477590023cbb55bfce960590951e93aa92253a6a4"
+  ],
+  "proposal_refs": [
+    "mutation-a265f55026e5cd39ba227c3395a9b9f6047c6a6926d82fee5ff126157f2db96a",
+    "mutation-82b67bc73567bb6ee1fc98e0883451d93893892d2de9cbe262e69f4340f4ecbf"
+  ],
+  "candidates": [
+    {
+      "strategy_id": "project-planning",
+      "version": 1
+    },
+    {
+      "strategy_id": "project-planning",
+      "version": 2
+    }
+  ],
+  "validation_refs": [
+    "2f6b4011-b2b6-40c3-9608-15d18050ec63",
+    "ca0d5630-2c07-4ba2-845c-e189670c782e"
+  ],
+  "gate_results": [
+    {
+      "validation_id": "2f6b4011-b2b6-40c3-9608-15d18050ec63",
+      "decision": "fail",
+      "policy_ref": {
+        "id": "project-planning-gate",
+        "version": "demo-1"
+      },
+      "reasons": [
+        "Token相对增幅=0.000000",
+        "延迟相对增幅=0.000000",
+        "Candidate 未达到任何预注册的正向收益条件"
+      ],
+      "improvement_attribution_ref": "improvement-attribution-8822ffaef0087ff7d23dbccb5052feea90ddcb4dfdb1e06d3bd34ba64d3c710f"
+    },
+    {
+      "validation_id": "ca0d5630-2c07-4ba2-845c-e189670c782e",
+      "decision": "fail",
+      "policy_ref": {
+        "id": "project-planning-gate",
+        "version": "demo-1"
+      },
+      "reasons": [
+        "Token相对增幅=0.175027",
+        "延迟相对增幅=0.000000",
+        "Token增幅超过允许上限"
+      ],
+      "improvement_attribution_ref": "improvement-attribution-6602b4bdeac64a846c4efd0477590023cbb55bfce960590951e93aa92253a6a4"
+    }
+  ],
+  "promoted": null,
+  "rollback_target": null
+}
