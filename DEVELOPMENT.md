@@ -2,9 +2,9 @@
 
 ## 当前仓库状态
 
-已有 Python 项目、uv.lock、.python-version 与依赖声明；`main.py` 只打印占位信息。尚无 EvoTeam 业务包、测试套件、服务入口或前端工程。安装依赖不代表架构模块已实现。
+已有项目规划 v1 契约、规则检查/评价、固定三角色 Orchestrator、SQLite 在线封存和无模型演示。已接真实 openJiuwen ReActAgent、模型登记、init/run/observe、重复错误聚合和持久化冷却。SDK 使用本地 HTTP 服务联调；外部模型实测、其他监控信号及离线演进仍待完成，没有 HTTP 服务或前端工程。
 
-开发前阅读 README、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；演进和评价工作同时阅读 EXPERIMENTS、DECISIONS。产品与架构按最终讨论冻结，先完成文档统一，再按 P0–P5 实现。
+开发前阅读 README、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；演进和评价工作同时阅读 EXPERIMENTS、DECISIONS。产品与架构按最终讨论冻结，现有骨架按 P0–P5 逐步填充逻辑。
 
 ## 环境初始化
 
@@ -34,7 +34,7 @@ uv sync
 | 后端相关依赖 | 已声明 FastAPI、Uvicorn、HTTPX、SSE、Pydantic Settings，尚无服务实现 |
 | 持久化相关依赖 | 已声明 SQLAlchemy、Alembic；首轮按单机 SQLite 路径实现 |
 | 前端 | React + TypeScript 仍为候选，仓库没有前端工程；具体组件在 P5 确定 |
-| 检查工具 | 已声明 pytest、pytest-asyncio、Ruff、Pyright；专项配置和测试需在 P0 补齐 |
+| 检查工具 | pytest、pytest-asyncio、Ruff、Pyright 已配置，基础契约与边界测试位于 tests/ |
 
 具体包版本以锁文件为准。接入前验证锁定版本的 SDK API、异步行为、结构化输出、Tool 与事件回调，不能把飞书示意代码中的类名当作真实 SDK 接口。
 
@@ -55,12 +55,130 @@ uv run ruff check .
 uv run pyright
 ```
 
-当前没有测试套件时，pytest 的 “no tests ran” 不代表通过。必须在汇报中说明缺失，不为文档改动编造测试结果。业务实现开始后，补齐必要配置并运行全部相关检查。
+测试覆盖固定配置、Prompt 引用、不可变边界、无副作用导入、SDK 依赖边界、离线 CLI，以及执行/评价/封存的顺序、无 Trigger 不演进、验证数据隔离和观察期间版本变更。另覆盖主任务正反例、真实 SQLite 重开与事务回滚、失败/超时/外部取消、预算、输入快照和消息来源。测试不代表真实模型与演进验收。Ruff 排除 docs 与历史汇报资源，避免自动格式化原始讨论里的示意代码。
 
 ## Git 与文件管理
 
 初始化阶段可直接完善 main 文档和基础骨架。正式功能开发使用任务分支和 PR；遵循任务约定，不建立每人永久分支。
 
-提交 pyproject.toml、uv.lock、.python-version、源码、测试、版本化配置和文档。创建环境样例时仅保存字段和占位值，不包含凭据。虚拟环境、真实 .env、运行数据库、缓存和系统文件不纳入版本管理；当前仓库尚需在工程基线阶段补齐 .gitignore / .env.example。
+提交 pyproject.toml、uv.lock、.python-version、源码、测试、版本化配置和文档。`.env.example` 提供环境字段，不包含凭据；`.gitignore` 排除虚拟环境、真实 .env、运行数据库、缓存和系统文件。Settings 只在显式实例化时读取环境，模块导入不创建全局客户端、数据库或模型连接。
 
 飞书讨论与项目计划书作为原始设计依据保留。实现规范只有 README 导航中的主题文档，不再新增平行 v1/v2/v3 草案。每次实现同步更新真实进度和可执行命令，不把计划写成已完成能力。
+
+
+## 当前可运行入口
+
+```bash
+uv run python -m evoteam roles
+uv run python -m evoteam v0 --model-id preview --model-version draft
+uv run python main.py --help
+uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
+```
+
+`roles` 列出固定职责池；`v0` 输出可序列化的三节点 DRAFT 配置。preview/draft 是预览占位值，不是项目选定模型。`demo` 用手写产物运行真实调度与归档，要求全新数据库路径。正式 `init/run/observe` 的配置与命令见系统运行指南；尚无可用的 `evolve` 命令或 HTTP 业务端点。
+
+初始骨架约定：缺失预算为 None，表示尚待配置；Retry/Replan 先为 0，表示未开启。这些是离线配置起点，不是实验校准结论。正式 v0 进入 CURRENT 前必须明确运行参数、能力引用和校验。项目采用仓库内 `python -m evoteam` 运行，暂不增加 wheel 构建或发布配置。
+
+## Python 文件索引
+
+所有包的 `__init__.py` 只说明职责，不初始化服务。下表覆盖各个业务 `.py`；模型中的 TODO 是具体校验或算法的后续实现位置，不表示已完成对应阶段。
+
+### 入口与装配
+
+| 文件 | 当前内容与后续职责 |
+| --- | --- |
+| `main.py` | 兼容仓库入口，转发 CLI |
+| `evoteam/__main__.py` | 支持 python -m evoteam；导入不执行命令 |
+| `evoteam/cli.py` | roles / v0 配置预览与 demo 无模型演示 |
+| `evoteam/entrypoints.py` | 正式 init/run/observe；登记模型绑定，执行与观察分离 |
+| `evoteam/demo.py` | 在全新数据库运行手写示例，不污染真实历史 |
+| `evoteam/bootstrap.py` | 构建固定 Planner → Executor → Critic DRAFT v0 |
+| `evoteam/settings.py` | 环境配置及 SecretStr 凭据字段，无全局实例 |
+| `evoteam/application.py` | 已实现 TaskService.execute、EvolutionService.inspect / evolve_if_needed 的模块调用顺序和身份检查 |
+| `evoteam/composition.py` | 已实现无副作用依赖装配、共享执行/评价组件与 StoreEventSink |
+
+### 领域模型
+
+| 文件 | 固定内容与边界 |
+| --- | --- |
+| `domain/common.py` | Pydantic 基类、不可变模型、AssetRef、StrategyRef、预算类型 |
+| `domain/role.py` | RoleType、RoleDefinition、只读七角色 ROLE_POOL |
+| `domain/agent.py` | ToolPolicy、RuntimeConfig、AgentConfig、AgentInstance、消息与结果 |
+| `domain/strategy.py` | Strategy、定义/版本信息、拓扑边、调度策略与生命周期枚举 |
+| `domain/task.py` | Task / TaskProfile 与三类任务枚举；项目规划由专用解析器校验 |
+| `domain/planning.py` | 项目规划 v1 输入、输出、Planner 分析与 Critic 审查；单位和引用校验 |
+| `domain/events.py` | TraceEvent 与执行/治理统一事件名 |
+| `domain/run.py` | Team、ExecutionPlan、RunResult、RunPurpose、SealedRun、完整 RunSnapshot |
+| `domain/evaluation.py` | EvaluationIssue、RunMetrics、EvaluationResult；未知指标为 None |
+| `domain/experience.py` | 正负经验、模式、Origin/Control/贡献/改进归因数据 |
+| `domain/evolution.py` | Trigger、MonitorResult、Mutation 白名单、验证计划/结果、Gate、EvolutionRecord |
+
+配置模型采用 frozen 与 tuple，运行对象使用独立实例和容器。SealedRun 保存不可变元数据与产物引用；SQLite 已实现不可覆盖、封存事务和完整快照落盘。当前 Orchestrator 校验固定 v0 支持范围；通用候选图和能力注册校验仍待实现。
+
+### 能力与 Runtime
+
+| 文件 | 当前入口与后续职责 |
+| --- | --- |
+| `capabilities/registry.py` | Role/Prompt/Skill/Tool/Model 解析 Protocol；无真实动态 Registry |
+| `capabilities/prompts.py` | 已登记 Prompt 引用到包内文件的只读映射及读取函数 |
+| `runtime/protocol.py` | AgentRuntime、RuntimeAgent 句柄、RuntimeContext、EventSink |
+| `runtime/fake.py` | FakeRuntime：按角色回传预置产物；只接受 fake@1，实际无模型用量 |
+| `runtime/models.py` | 非敏感模型身份、连接与采样参数；独立 SecretStr 密钥 |
+| `runtime/openjiuwen/adapter.py` | 已实现锁定 SDK ReActAgent，单次调用、JSON、用量、超时和上下文清理 |
+| `tools/constraint_checker.py` | check：已实现资源、依赖、技能、期限、预算、完整性检查及定位证据 |
+
+`evoteam/prompts/{planner,executor,critic,verifier}/v0.md` 保存初始模板。Verifier 仅是已准备的能力模板，不加入默认 v0。其他固定 Role 只有职责定义，具体 Prompt/Skill/Tool 配置随对应场景实现。业务 Agent 由 AgentConfig + Runtime 创建，不再为每个 Role 重复写一套 Python Agent 类。
+
+### 执行、评价与经验
+
+| 文件 | 当前方法与后续职责 |
+| --- | --- |
+| `orchestration/task_analyzer.py` | analyze：校验项目规划 v1 输入并提取约束引用 |
+| `orchestration/orchestrator.py` | execute：已实现固定 v0、消息来源、Token/超时检查及有界清理 |
+| `evaluation/evaluator.py` | Evaluator Protocol；evaluate 已独立校验唯一计划、保留失败，未知质量/用量保持 None |
+| `evaluation/metrics.py` | MetricsCollector.collect：汇总唯一运行产物用量和执行耗时，失败缺失用量不伪造 |
+| `experience/store.py` | ExperienceStore Protocol：保存正负经验及模式 |
+| `experience/evidence.py` | 可比较窗口验证、错误码与确定性证据 ID |
+| `experience/aggregator.py` | 已实现重复错误模式、支持 Run 与成功反例 |
+| `monitoring/state.py` | MonitorState / Store，持久化观察历史与并发 revision |
+| `monitoring/policy.py` | EvolutionPolicy：显式参数，无示例阈值默认值 |
+| `monitoring/strategy_monitor.py` | inspect/observe：重复失败、样本量与冷却；不生成 Candidate |
+
+### 演进与治理
+
+| 文件 | 当前方法与后续职责 |
+| --- | --- |
+| `evolution/attribution.py` | analyze_failure / analyze_contribution / analyze_improvement |
+| `evolution/mutation.py` | propose / materialize：白名单提案与隔离 Candidate |
+| `evolution/validator.py` | validate：复用 Orchestrator + Evaluator 做配对实验 |
+| `evolution/gate.py` | GatePolicy 与 decide；只返回规则裁决，不切换版本 |
+| `evolution/lifecycle.py` | promote / reject / transition / rollback；后续校验合法转换 |
+| `evolution/manager.py` | evolve：Trigger 后组织归因、候选、验证与生命周期 |
+
+### 持久化与测试
+
+| 文件 | 当前方法与后续职责 |
+| --- | --- |
+| `storage/protocol.py` | RunStore（含 seal_run 原子封存）、StrategyStore、EvolutionStore；显式用途与生命周期契约 |
+| `storage/sqlite.py` | 显式 initialize / open / close；六张表、在线封存、模型绑定、经验与监控检查点；治理存储仍占位 |
+| `tests/test_skeleton.py` | 初始契约、边界及 CLI 测试，不调用模型或数据库 |
+| `tests/test_planning.py` | 项目规划输入与约束正反例、独立评价 |
+| `tests/test_online.py` | 固定调度 + SQLite 端到端、故障、事务、快照、取消及 demo CLI |
+| `tests/test_openjiuwen.py` | 实际 SDK 与本地 HTTP 协议、JSON、用量、重试边界 |
+| `tests/test_runtime_entry.py` | 实际 SDK 全链路、模型绑定、超时/外部取消、历史观察 |
+| `tests/test_monitoring.py` | 跨 Run 模式、冷却、重开数据库及并发检查 |
+| `tests/test_live_provider.py` | 显式启用的真实模型冒烟；默认跳过 |
+| `tests/test_application.py` | 使用记录调用的替身验证跨模块顺序、隔离、版本竞争与异常传播 |
+
+上表中省略 `evoteam/` 的相对路径均以该包为根。Protocol 中的省略号只声明接口；未实现的算法骨架使用 `NotImplementedError`，不能返回假评分、假晋级或静默成功。应用服务只调用注入的组件，并不使那些组件自动变成已实现。
+
+
+## 模块关系与下一步
+
+模块图、在线与离线路径、项目规划 v1 字段语义、故障处理及贡献者阅读顺序统一放在 [系统运行指南](docs/SYSTEM_WALKTHROUGH.md)，本文件只维护环境与文件索引。
+
+真实 SDK 与本地协议服务的在线闭环已经通过集成测试；下一项是填写实际模型配置、运行固定数据集并校准基线，再扩展监控信号及离线演进。总 Token 预算目前为响应后检测，只有输出 Token 上限传入请求；输入 Token 预估和严格费用上限尚未实现。P0/P1 的通用能力注册、迁移和恢复等尚未全部完成，阶段验收见 ROADMAP。
+
+SDK 0.1.17.post1 的导入和 SSL 代码会产生上游弃用警告，当前测试保留这些警告；不将其隐藏成无警告结果。
+
+Adapter 的清理直接使用 SDK 的公开 checkpoint/context 释放接口。锁定版本的 `ReActAgent.clear_session` 会经全局 Runner 导入无关 Team/Evolving 可选依赖，当前不走该路径，也不为此扩大项目依赖。

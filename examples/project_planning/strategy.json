@@ -1,0 +1,106 @@
+{
+  "definition": {
+    "agents": [
+      {
+        "node_id": "planner",
+        "config_id": "planning-planner",
+        "config_version": 0,
+        "role": "planner",
+        "prompt_ref": {
+          "id": "planner",
+          "version": "v0"
+        },
+        "model_ref": {
+          "id": "planning-model",
+          "version": "deployment-1"
+        },
+        "skill_refs": [],
+        "tool_policy": {
+          "allowed_tools": [],
+          "required_tools": []
+        },
+        "runtime_config": {
+          "timeout_seconds": 60.0,
+          "max_retries": 0
+        }
+      },
+      {
+        "node_id": "executor",
+        "config_id": "planning-executor",
+        "config_version": 0,
+        "role": "executor",
+        "prompt_ref": {
+          "id": "executor",
+          "version": "v0"
+        },
+        "model_ref": {
+          "id": "planning-model",
+          "version": "deployment-1"
+        },
+        "skill_refs": [],
+        "tool_policy": {
+          "allowed_tools": [],
+          "required_tools": []
+        },
+        "runtime_config": {
+          "timeout_seconds": 60.0,
+          "max_retries": 0
+        }
+      },
+      {
+        "node_id": "critic",
+        "config_id": "planning-critic",
+        "config_version": 0,
+        "role": "critic",
+        "prompt_ref": {
+          "id": "critic",
+          "version": "v0"
+        },
+        "model_ref": {
+          "id": "planning-model",
+          "version": "deployment-1"
+        },
+        "skill_refs": [],
+        "tool_policy": {
+          "allowed_tools": [],
+          "required_tools": []
+        },
+        "runtime_config": {
+          "timeout_seconds": 60.0,
+          "max_retries": 0
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "planner",
+        "target": "executor",
+        "condition_ref": null
+      },
+      {
+        "source": "executor",
+        "target": "critic",
+        "condition_ref": null
+      }
+    ],
+    "orchestration": {
+      "mode": "sequential",
+      "retry_limit": 0,
+      "replan_limit": 0,
+      "budget": {
+        "max_tokens": 12000,
+        "max_tool_calls": 0,
+        "timeout_seconds": 180.0
+      }
+    }
+  },
+  "metadata": {
+    "ref": {
+      "strategy_id": "project-planning",
+      "version": 0
+    },
+    "parent": null,
+    "generation": 0,
+    "status": "current"
+  }
+}

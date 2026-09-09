@@ -78,7 +78,7 @@ Strategy
     └── lifecycle_status
 ```
 
-这是领域契约，不是已存在的 Python API。实现时使用 Pydantic Schema，避免将核心规则藏入无约束字典或自然语言。引用必须能解析到固定版本，保证旧 Strategy 可还原。
+这是领域契约；`evoteam/domain/` 已提供初始 Pydantic 模型。项目规划 v1 已提供具体输入、计划、分析和审查 Schema。固定 v0 的节点、连边、Prompt 引用、运行上限和不支持能力由执行器检查；通用候选图、模型/Tool 注册与权限验证仍待实现。具体单位和运行路径见 [系统运行指南](SYSTEM_WALKTHROUGH.md)。Task 和消息沿用 JSON 信封，规划产物按固定 Schema 解析。引用必须能解析到固定版本，保证旧 Strategy 可还原。
 
 Topology 描述有向节点与信息流；OrchestrationPolicy 描述顺序、并行、条件、Retry、Replan、Routing 和 Stop 规则。表达能力可以逐步实现，未实现的结构应明确拒绝，不得静默降级或交给 LLM 自由执行。
 
@@ -110,6 +110,8 @@ v0 固定为 Planner → Executor → Critic。Planner 识别目标与约束，E
 
 | 组件 | 身份与时机 | 输入 → 输出 | 不承担的职责 |
 | --- | --- | --- | --- |
+| TaskService | 应用层在线入口；每个业务任务 | Task → 当前策略、画像、Run、评分、封存 | 不调用 Monitor / EvolutionManager |
+| EvolutionService | 应用层观察与离线入口；显式调用 | 线上证据窗口 → MonitorResult → 有 Trigger 才派发 | 不替代 Monitor 的阈值判断或 Manager 的演进算法 |
 | Orchestrator | 确定性在线控制器；每个任务及验证 Run | Task + Strategy → RunResult / Trace | 不打策略分、不生成 Candidate、不决定晋级 |
 | Critic / Verifier | Team 内业务 Agent；任务执行中 | 产物 + Checklist / Tool Result → 结构化审查结果 | 不代替独立 Evaluator 或 Gate |
 | Evaluator | 规则、程序与固定 Judge；单 Run 结束后 | Task + RunResult → EvaluationResult / Metrics | 不生成 Candidate，不裁决长期趋势 |
@@ -201,12 +203,14 @@ OpenJiuwenRuntimeAdapter
 openJiuwen Core → Model / Tool / Workflow / ReAct
 ```
 
-EvoTeam 保存可序列化配置、运行证据和版本治理。Adapter 负责把 AgentConfig 映射为真实 SDK Agent，并把运行回调转换为统一 TraceEvent。使用底层 Workflow 能力不能把 EvoTeam 的权限、预算与控制职责绕过。
+EvoTeam 保存可序列化配置、运行证据和版本治理。Adapter 的目标职责是把 AgentConfig 映射为真实 SDK Agent，并把运行回调转换为统一 TraceEvent；Adapter 已延迟加载锁定的 ReActAgent，实现单次、无工具、无重试的结构化调用和用量转换；真实 SDK 使用本地 HTTP 完成联调，外部服务仍待实际配置验收。使用底层 Workflow 能力不能把 EvoTeam 的权限、预算与控制职责绕过。
 
-目标模块布局（尚未实现）：
+模块布局（固定 v0 的无模型在线闭环已实现，真实 SDK 与重复失败观察已接入，离线演进仍待填充）：
 
 ```text
 evoteam/
+├── composition.py   # 无副作用装配，在线/验证共享执行器与评价器
+├── application.py   # 在线 TaskService 与显式观察/离线 EvolutionService
 ├── domain/          # role、agent、strategy、task、run、evaluation、experience、evolution
 ├── runtime/         # protocol 与 openjiuwen/adapter
 ├── orchestration/   # orchestrator
@@ -226,6 +230,8 @@ evoteam/
 TraceEvent 至少能关联 run_id、task_id、Strategy 版本、节点/实例及因果来源，并记录有序事件与时间。Agent 消息和工具调用保留输入来源、结果或产物引用，支持错误传播定位。
 
 事件语义覆盖 Task 创建、Team 解析、Agent 开始/消息/完成/失败、Tool 调用/结果、Run 终结、评价完成、封存、Trigger、归因、候选生成、验证、Gate、晋级、拒绝、稳定、重开和回滚。具体枚举与 Schema 在 P0/P1 实现中统一定义，不维护两套同义事件。
+
+`RunStore.seal_run(Task, RunResult, EvaluationResult)` 是应用层的封存入口：Repository 必须先保存真实快照、评价和封存索引，再返回 SealedRun。SQLite 已实现该事务及完整 Task/Strategy/Run 快照、评价与封存事件，拒绝覆盖旧记录；应用层不生成虚假的 snapshot_ref。
 
 首轮采用单机持久化，延续 SQLite 的工程路径。Run 标记 online / validation 等运行用途，验证运行不能污染线上触发窗口。版本切换与审计要一致完成，旧定义、旧 Prompt、旧验证证据均保留。
 

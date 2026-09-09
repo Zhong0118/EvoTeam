@@ -1,4 +1,4 @@
-"""兼容仓库入口，转发到统一的离线预览 CLI。"""
+"""python -m evoteam 入口；导入模块时不解析命令行。"""
 
 from evoteam.cli import main
 

@@ -49,7 +49,7 @@
 
 | 项目 | 处理方式 | 必须完成的时点 |
 | --- | --- | --- |
-| Task / Constraint Schema、输出 Schema、检查器语义 | 将主场景转为明确的字段、单位、约束规则与正反例 | P0，在线业务实现前 |
+| 项目规划 v1 契约 | 已实现整数小时、独占人员、整数费用与确定性正反例；复杂日历与费用扩展需新版本 | 现行字段见 domain/planning.py，语义见 SYSTEM_WALKTHROUGH |
 | window_size、min_samples、重复失败阈值 | 用固定 v0 的正常波动校准 | 主演进实验前 |
 | quality_drop、cost_overrun、low_contribution 阈值 | 指定指标口径、基线及比较方向后校准 | Monitor 与 Gate 实验前 |
 | cooldown、max_candidates、演进总预算 | 开发者定义资源限制并版本化登记 | 演进流程启用前 |
@@ -63,6 +63,6 @@
 
 ## 4. 文档职责与清理
 
-README 为总入口；PROJECT 定范围，ARCHITECTURE 定概念和模块，EXPERIMENTS 定评价协议，ROADMAP 定实施顺序，PRESENTATION_PLAN 定汇报内容，RELATED_WORK 保存参考入口。DEVELOPMENT 与 AGENTS 管工程流程。
+README 为总入口；PROJECT 定范围，ARCHITECTURE 定概念和模块，EXPERIMENTS 定评价协议，ROADMAP 定实施顺序，PRESENTATION_PLAN 定汇报内容，RELATED_WORK 保存参考入口。DEVELOPMENT 与 AGENTS 管工程流程；SYSTEM_WALKTHROUGH 解释实际模块关系、运行路径和贡献者入口。
 
 重复的 PRODUCT_VISION、旧 PROJECT_PROPOSAL、旧讨论汇总及 docs/v1 文档集已由现行主题文档替代。旧 HTML 汇报中的动态首次组队与 Family 叙事也不再适用，移出当前文档集。保留 V4 项目计划书和飞书原始记录供追溯，不再复制出另一套带版本后缀的实现规范。

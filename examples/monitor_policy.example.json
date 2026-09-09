@@ -1,0 +1,13 @@
+{
+  "ref": {"id": "illustrative-only", "version": "1"},
+  "window_size": 10,
+  "min_samples": 3,
+  "repeated_failure_threshold": 2,
+  "quality_drop_threshold": 0.1,
+  "cost_overrun_threshold": 0.2,
+  "low_contribution_threshold": 0.01,
+  "cooldown_runs": 3,
+  "max_candidates": 1,
+  "stable_window_count": 3,
+  "enabled_triggers": ["repeated_failure"]
+}

@@ -1,0 +1,10 @@
+{
+  "schedule": [
+    {"work_id": "design", "person_id": "alice", "start_hour": 0, "end_hour": 2},
+    {"work_id": "build", "person_id": "alice", "start_hour": 2, "end_hour": 6}
+  ],
+  "milestones": [{"milestone_id": "delivery", "completion_hour": 6}],
+  "risks": ["需求变更可能需要重新排期。"],
+  "adjustments": [],
+  "validation_notes": ["两项工作顺序执行，共 6 小时；人工费 600 分，预算 800 分。"]
+}

@@ -1,6 +1,6 @@
 # EvoTeam 实施路线图
 
-产品和架构按最终讨论冻结，后续工作围绕单条 Strategy 版本链实现闭环。当前只完成仓库依赖与文档准备，`main.py` 仍是占位入口；下列业务能力不能标记为已实现。
+产品和架构按最终讨论冻结。已实现基础领域契约、项目规划 v1 Schema 与约束正反例、独立规则评价、固定三角色调度、SQLite 在线证据封存和无模型 demo；应用级历史观察/离线派发已有接线。真实 SDK 已接入并经本地 HTTP 联调，基础用量/耗时、重复错误聚合和有状态重复失败监控已实现；外部模型实测、通用能力注册、其他监控信号与演进治理仍待完成，P0/P1 尚未全部验收。实际运行入口见 [系统运行指南](SYSTEM_WALKTHROUGH.md)。
 
 ## P0 领域契约与可评价任务
 
@@ -71,4 +71,4 @@
 
 结构 Mutation 属于核心闭环验收，不再沿用“先做完整 Prompt 产品，之后才考虑 Team Evolution”的路线。UI 随已有证据逐步实现，不能用静态展示替代尚未运行的治理机制。
 
-下一项代码任务从 P0 的 RoleDefinition、AgentConfig、Strategy 契约和项目规划评价样例开始。前置决策见 [DECISIONS.md](DECISIONS.md)，完整模块边界见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+下一项配置实际模型服务，使用固定数据集跑真实基线，核验供应商输出、Token 与失败分布并校准 Policy。随后扩展带基线的监控、受控 Tool、归因与候选验证。初始化、运行与观察命令见 [SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)。P0/P1/P2 均不能因本地协议测试通过就整体标记验收完成。

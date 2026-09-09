@@ -1,0 +1,20 @@
+{
+  "task_id": "planning-demo",
+  "task_type": "project_planning",
+  "instruction": "为一个小型交付项目制定满足依赖、资源和预算的计划。",
+  "input_schema": {"id": "project-planning-input", "version": "1"},
+  "inputs": {
+    "goal": "完成设计与实现并交付",
+    "deadline_hour": 8,
+    "budget_minor": 800,
+    "currency": "CNY",
+    "people": [
+      {"person_id": "alice", "skills": ["design", "python"], "hourly_cost_minor": 100, "available_from_hour": 0, "available_until_hour": 8}
+    ],
+    "work_items": [
+      {"work_id": "design", "description": "完成设计", "duration_hours": 2, "required_skills": ["design"], "dependencies": []},
+      {"work_id": "build", "description": "实现并交付", "duration_hours": 4, "required_skills": ["python"], "dependencies": ["design"]}
+    ],
+    "milestones": [{"milestone_id": "delivery", "work_ids": ["design", "build"], "deadline_hour": 8}]
+  }
+}

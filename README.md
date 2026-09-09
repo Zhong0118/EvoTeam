@@ -15,14 +15,15 @@ EvoTeam 是基于 openJiuwen Core 的经验驱动多智能体组织演进系统�
 
 ## 当前状态
 
-产品范围、核心概念、六层架构和两个闭环已按最终讨论统一，进入实现准备阶段。仓库目前只有依赖配置与 `main.py` 占位入口，尚未实现上述业务模块，也没有可运行的 EvoTeam 服务或实验结果。
+产品与架构已按最终讨论统一。已实现项目规划 v1 输入/输出契约、确定性约束检查、固定 Planner → Executor → Critic 调度、独立规则评价、SQLite 事件与快照封存，以及无需密钥的 Fake Runtime 演示。已接入 openJiuwen 0.1.17.post1 的真实 ReActAgent，提供 init/run/observe 入口、非敏感模型版本绑定、用量与耗时、重复错误经验和持久化冷却检查点。真实 SDK 经本地 HTTP 服务验证；外部模型实测尚待配置，漂移/成本/贡献监控及离线候选与治理仍未完成，尚无真实模型或演进实验结果。
 
-本轮先完成文档整理；代码开发按 [路线图](docs/ROADMAP.md) 从 P0 领域契约与主任务评价器开始。架构基线不再作为开放式头脑风暴反复改写；具体阈值在基线实验后校准、登记并冻结。
+第一次接手建议先读 [模块关系与系统运行指南](docs/SYSTEM_WALKTHROUGH.md)，运行示例后沿调用链阅读代码。完整文件索引见 [开发说明](DEVELOPMENT.md)，未完成阶段见 [路线图](docs/ROADMAP.md)。具体实验阈值仍需基线校准。
 
 ## 阅读入口
 
 | 文档 | 唯一职责 |
 | --- | --- |
+| [系统运行指南](docs/SYSTEM_WALKTHROUGH.md) | 实际模块关系、运行路径、数据契约、演示及后续开发入口 |
 | [项目定义](docs/PROJECT.md) | 产品目标、主场景、范围、创新与验收 |
 | [架构](docs/ARCHITECTURE.md) | 术语、六层职责、两个闭环、模块与数据契约 |
 | [决策](docs/DECISIONS.md) | 已冻结决策、来源与仍需校准的参数 |
@@ -43,7 +44,9 @@ Python 3.12、uv、Pydantic、openJiuwen Core。后端相关依赖已经声明�
 
 ```bash
 uv sync
-uv run python --version
+uv run python -m evoteam roles
+uv run python -m evoteam v0 --model-id preview --model-version draft
+uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 ```
 
-完整开发与检查方式见 [DEVELOPMENT.md](DEVELOPMENT.md)。
+`roles`、`v0` 只预览配置，v0 输出为 DRAFT。`demo` 使用手写产物执行真实调度、规则评价和 SQLite 封存，数据库路径必须不存在；重复运行请换新文件名。演示不调用模型，不能作为质量或演进实验结果。完整开发与检查方式见 [DEVELOPMENT.md](DEVELOPMENT.md)。
