@@ -1,34 +1,8 @@
-# AGENTS.md
+# EvoTeam Agent 开发约束
 
-> 本文件是 EvoTeam 仓库中所有 Coding Agent、自动化编程助手和贡献者必须遵守的开发约束。
+## 1. 角色与依据
 
----
-
-# 1. 你的角色
-
-你是 EvoTeam 项目的实现者，不是产品负责人。
-
-你的职责是：
-
-- 阅读现有文档；
-- 理解当前 Issue / Task；
-- 在明确边界内实现；
-- 编写测试；
-- 汇报修改内容与风险。
-
-你不应该擅自：
-
-- 重定义产品目标；
-- 替换技术栈；
-- 引入新的 Agent Framework；
-- 改变系统核心架构；
-- 把一个小任务扩张成“大重构”。
-
----
-
-# 2. 开发前必须阅读
-
-开始任何功能开发前，至少阅读：
+Coding Agent 是项目实现者，不替团队重新定义产品。开发前必须阅读：
 
 ```text
 README.md
@@ -39,309 +13,69 @@ docs/ARCHITECTURE.md
 docs/ROADMAP.md
 ```
 
-如果任务涉及自演进或实验，还必须阅读：
+演进、评价或实验任务还必须阅读 `docs/EXPERIMENTS.md`、`docs/DECISIONS.md`。
+
+当前规范已经按飞书 v2/v3 最终讨论与 V4 项目计划书统一。原始讨论保留用于追溯，不将早期 Family、动态首次组队或示意代码重新升级为当前需求。遇到真正的核心决策冲突应指出，不擅自改架构；普通实现细节在既定边界内处理。
+
+## 2. 技术基线
+
+Python 3.12、uv、Pydantic、openJiuwen Core。依赖统一使用 `uv add`、`uv add --dev`、`uv sync`、`uv run`；不使用 pip / conda 管理正式依赖。
+
+只有 `runtime/openjiuwen/` Adapter / Integration 层可以直接 import openjiuwen。Domain、Orchestration、Evaluation、Experience、Monitoring、Evolution 只依赖自己的模型和接口。Fake Runtime 用于测试，不替代最终真实 openJiuwen 集成。
+
+不主动引入 LangGraph、AutoGen、CrewAI、Kafka、Redis、Kubernetes、微服务、Celery、训练框架或大型向量数据库。后端与前端的实际状态见 DEVELOPMENT，不把候选技术写成已有实现。
+
+## 3. 冻结的产品与领域规则
+
+- 主场景是复杂项目计划生成与校验；报告、数据分析用于补充可复现验证。
+- 固定 Role Pool：Planner、Executor、Researcher、Analyst、Writer、Verifier、Critic。自动演进不得创造或改写 RoleDefinition。
+- 初始 Strategy v0 固定为 Planner → Executor → Critic，不在每次任务中自由生成组织。
+- 统一使用 AgentConfig 表达稳定配置；AgentInstance 持有本次 Run 状态；Team 是实际启用的实例与协作关系。
+- Strategy 包含 AgentConfig、Topology、OrchestrationPolicy 与 VersionMetadata；EvolutionRecord 独立保存证据、归因、验证和决定。
+- 当前只验证单条正式 Strategy 版本链，不实现 Family、分支、继承、合并、父策略晋级。
+- Planner 不默认检索历史 Experience；主要跨任务影响路径必须经过 Strategy 版本变化。
+
+## 4. 执行与评价边界
+
+Agent 通过 Orchestrator 通信，不直接互调；输入输出优先使用 Pydantic Schema，不让下一个 Agent 从自由文本猜结构。
+
+Orchestrator 负责实例化、调度、结构化消息、Retry、Timeout、Budget 与 Trace。Critic / Verifier 是 Team 内质量控制 Agent；Evaluator 在 Run 后独立评分；StrategyMonitor 跨 Run 判断 Trigger；Validator 组织 Current / Candidate 实验；Gate 按规则裁决；EvolutionManager 组织离线流程并执行生命周期操作。
+
+这些模块不能合成统管一切的超级 Agent。LLM 可以辅助归因与候选提案，不能自行改阈值、放宽权限或决定绕过 Gate。
+
+## 5. 演进约束
+
+Retry、Reflection、Replan、临时上下文和条件路由本身不算跨任务演进。长期变更必须走：
 
 ```text
-docs/EXPERIMENTS.md
-docs/DECISIONS.md
+Experience → Monitor Trigger → EvolutionManager → Attribution
+→ Bounded Mutation → Candidate → Validator → Improvement Attribution
+→ Validation Gate → Promote / Reject → Future Tasks
 ```
 
----
+普通任务不修改当前 Strategy；一个 Run 固定配置快照。Candidate 与 Current 使用同一数据模型，但 Candidate 只在隔离验证中执行。验证 Run 不污染线上 Monitor，不触发递归演进。
 
-# 3. 当前技术基线
+白名单为 AgentConfig 增删/替换、Prompt / Tool Policy 更新、Rewire、Conditionalize。固定 Role 与授权能力边界，禁止任意代码生成、无界循环、自动新增 Tool 或扩大权限。模型版本在受控比较中保持一致。
 
-**[确定]**
+Prompt 使用版本化资产和固定引用，不能直接覆盖旧模板。Role 职责、用户输入和运行上下文不作为 Prompt Mutation 对象。
 
-```text
-Python: 3.12
-Package Manager: uv
-Agent Framework: openJiuwen Core
-Backend Candidate: FastAPI
-Frontend Candidate: React + TypeScript
-```
+STABLE 停止主动搜索并继续服务；新证据达到阈值才 Reopen。Reject 拒绝未上线候选，Rollback 撤下已上线退化版本并恢复可用历史版本。样本不足不能默认晋级。
 
-依赖管理统一使用：
+## 6. 证据与实验
 
-```bash
-uv add ...
-uv add --dev ...
-uv sync
-uv run ...
-```
+核心步骤产生统一事件，保留输入来源、消息、工具、结果、成本与终止原因。成功、失败、超时、取消均留档；SealedRun 封存后不可修改。
 
-不要使用：
+Experience 保留支持样本、反例、置信度、适用范围与验证历史。Failure Attribution 区分 Origin / Control；Contribution Analysis 支持裁剪；Improvement Attribution 在验证后、晋级前完成。
 
-```bash
-pip install ...
-conda install ...
-```
+History / Evolution、Validation、Final Test 相互隔离。候选生成不读取验证答案，最终测试不用于反复选候选。比较同任务、模型、Tool 版本、随机参数、评价器和预算，记录质量、成功率、Token/成本、延迟、Agent 数、Retry 和离线演进成本。
 
-来管理项目正式依赖。
+阈值由开发者定义规则、v0 基线校准后冻结；不得把飞书示例数值当作最终参数或实际结果。高影响或不确定归因使用消融/反事实证据，避免每个 Run 无条件运行昂贵实验。
 
----
+## 7. 修改原则与验证
 
-# 4. openJiuwen 使用边界
+只实现当前任务范围，保持接口兼容，不做无关重构。新功能补有意义的测试。架构是目标约束，进度以实际代码为准，文档与实现不一致时明确指出。
 
-**[确定]**
-
-EvoTeam 基于 `openJiuwen Core` 构建。
-
-原则：
-
-```text
-EvoTeam Core
-      │
-      ▼
-Runtime Abstraction
-      │
-      ▼
-OpenJiuwen Adapter
-      │
-      ▼
-openJiuwen
-```
-
-只有明确的 openJiuwen Adapter / Integration 层允许直接：
-
-```python
-import openjiuwen
-```
-
-以下模块不应该直接依赖 openJiuwen：
-
-```text
-core
-evaluation
-evolution
-memory（结构化经验层）
-domain models
-```
-
-目的：
-
-- 避免业务逻辑绑死框架；
-- 便于测试；
-- 便于后期升级 openJiuwen；
-- 便于清楚说明哪些能力属于 EvoTeam。
-
----
-
-# 5. 当前禁止擅自引入
-
-除非 Issue 明确要求，否则不要主动引入：
-
-```text
-LangGraph
-AutoGen
-CrewAI
-Kafka
-Redis
-Kubernetes
-Microservices
-Celery
-RL/PPO/GRPO 训练框架
-大型向量数据库
-复杂分布式基础设施
-```
-
-不要因为“更先进”就增加复杂度。
-
----
-
-# 6. 核心领域规则
-
-## 6.1 Agent 不应直接互相调用
-
-当前默认通信方式：
-
-```text
-Agent
-  ↓
-TeamOrchestrator
-  ↓
-Agent
-```
-
-Agent 间通信由 Orchestrator 管理和记录。
-
-这样才能保证：
-
-- 可观察；
-- 可记录；
-- 可回放；
-- 可评估；
-- 可解释。
-
----
-
-## 6.2 Agent 输出优先结构化
-
-优先使用 Pydantic Schema。
-
-禁止依赖：
-
-```text
-“让下一个 Agent 自己读自然语言猜结构”
-```
-
-示例：
-
-```python
-class CriticResult(BaseModel):
-    score: float
-    passed: bool
-    issues: list[str]
-    failure_tags: list[str]
-```
-
----
-
-## 6.3 Prompt 必须可版本化
-
-不要长期把 Prompt 大段写死在业务 Python 文件中。
-
-推荐：
-
-```text
-prompts/
-├── planner/
-│   ├── v1.md
-│   └── v2.md
-├── executor/
-└── critic/
-```
-
-演进相关 Prompt 修改必须能够：
-
-- 查看版本；
-- 比较差异；
-- 回滚。
-
----
-
-## 6.4 所有运行必须可追踪
-
-核心执行步骤应该产生统一 Event，例如：
-
-```text
-TASK_CREATED
-TEAM_CREATED
-AGENT_STARTED
-AGENT_COMPLETED
-AGENT_MESSAGE
-TOOL_CALLED
-EVALUATION_COMPLETED
-EVOLUTION_TRIGGERED
-EVOLUTION_PROPOSED
-STRATEGY_PROMOTED
-STRATEGY_ROLLED_BACK
-```
-
----
-
-# 7. 自演进约束
-
-**[确定]**
-
-EvoTeam 中：
-
-```text
-Retry != Evolution
-```
-
-以下行为本身不能被称为“自演进”：
-
-- 失败后重新生成一次；
-- Critic 要求 Executor 重答；
-- 同一个 Prompt 多跑几次；
-- 临时增加上下文。
-
-真正的演进至少应满足：
-
-```text
-历史证据
-   ↓
-提出变更
-   ↓
-形成新版本
-   ↓
-验证
-   ↓
-Promote / Rollback
-   ↓
-影响未来任务
-```
-
----
-
-## 7.1 Evolution 不得直接修改线上策略
-
-必须：
-
-```text
-Current Strategy
-      ↓
-Evolution Proposal
-      ↓
-Candidate Strategy
-      ↓
-Validation
-      ↓
-Promote / Rollback
-```
-
-禁止：
-
-```text
-LLM 修改 Prompt → 直接覆盖当前版本
-```
-
----
-
-# 8. 实验优先于“看起来更聪明”
-
-如果实现涉及：
-
-- Prompt Evolution
-- Tool Evolution
-- Team Evolution
-
-必须考虑如何测量：
-
-```text
-Before
-vs
-After
-```
-
-重要指标至少包括：
-
-- 任务质量；
-- 成功率；
-- Token / 成本；
-- 延迟；
-- Agent 数量；
-- Retry 次数。
-
----
-
-# 9. 代码修改原则
-
-每次任务：
-
-1. 只实现当前 Scope；
-2. 尽量小改；
-3. 不做无关重构；
-4. 保持已有接口兼容；
-5. 新功能补测试；
-6. 文档和实现不一致时必须指出；
-7. 不确定架构时停止“猜”，在报告中标记待决策。
-
----
-
-# 10. 完成任务前必须执行
-
-当前项目配置完成后，至少执行：
+完成任务前执行：
 
 ```bash
 uv sync
@@ -349,76 +83,21 @@ uv run pytest
 uv run ruff check .
 ```
 
-如果已经配置 Pyright：
+已声明 Pyright 时同时执行 `uv run pyright`。无测试、工具失败或检查未运行都必须如实报告，不能宣称通过。
 
-```bash
-uv run pyright
-```
+## 8. Git 与汇报
 
----
+初始化阶段允许完善 main 文档及骨架；正式功能开发采用任务分支与 PR。分支属于任务，不属于个人。不要提交凭据、.venv、.env、运行数据库或系统缓存。
 
-# 11. 完成任务后的汇报格式
-
-Coding Agent 完成任务后必须汇报：
+完成后汇报：
 
 ```text
 ## 完成内容
-- ...
-
 ## 修改文件
-- ...
-
 ## 关键设计决策
-- ...
-
 ## 测试
-- uv run pytest: ...
-- uv run ruff check .: ...
-
 ## 尚存风险
-- ...
-
 ## 未完成 / 未处理
-- ...
 ```
 
-不要只说：
-
-```text
-“Done ✅”
-```
-
----
-
-# 12. Git 原则
-
-当前仓库初始化阶段允许直接完善 `main` 基础文档和项目骨架。
-
-进入正式多人功能开发后：
-
-```text
-main
-  ↑
-Pull Request
-  ↑
-feat/<task>
-```
-
-分支属于任务，不属于个人。
-
----
-
-# 13. 最重要的约束
-
-> 不要替团队做尚未做出的产品决策。
-
-如果文档标记为：
-
-```text
-[待定]
-[假设]
-```
-
-实现时不要擅自把它变成事实。
-
-EvoTeam 当前首先是一个需要被验证的产品与研究方案，其次才是一个代码仓库。
+原始讨论与计划书保留为来源，现行文档直接维护最终内容，不叠加互相冲突的补丁、批注或平行版本。

@@ -1,348 +1,42 @@
-# EvoTeam 阶段汇报 PPT 规划
-
-> 目标：几天后的阶段汇报。  
-> 当前重点不是证明产品已经做完，而是证明“问题理解清楚、方案有价值、技术路线可信、实验可验证”。
-
----
-
-# 1. 汇报目标
-
-听众应该在结束后记住三件事：
-
-1. 传统 Multi-Agent 的问题是“固定团队无法持续学习”；
-2. EvoTeam 的核心是“可验证的组织自演进”；
-3. 我们不是重做 openJiuwen，而是在其上构建 Evolution Layer。
-
----
-
-# 2. 推荐 PPT 结构
-
-## Slide 1：标题
-
-```text
-EvoTeam
-基于 openJiuwen 的自演进多智能体协作系统
-```
-
-副标题候选：
-
-```text
-让 Agent Team 像组织一样学习、协作与演进
-```
-
----
-
-## Slide 2：问题背景
-
-传统 Agent Team：
-
-```text
-固定角色
-固定数量
-固定 Workflow
-人工 Prompt
-任务之间没有持续学习
-```
-
-提出：
-
-> 为什么 Agent Team 每次都像“新组建的临时团队”？
-
----
-
-## Slide 3：赛题要求
-
-压缩成：
-
-```text
-3+ Agent
-协作
-自演进
-Before vs After
-3 类任务
-可解释
-可视化
-```
-
-强调：
-
-```text
-自演进 = 核心
-```
-
----
-
-## Slide 4：我们的理解
-
-三层：
-
-```text
-Agent 能运行
-      ↓
-Multi-Agent 能协作
-      ↓
-Agent Team 能持续演进
-```
-
-前两层是基础，第三层才是项目重点。
-
----
-
-## Slide 5：EvoTeam 一句话
-
-> 一个建立在 openJiuwen Core 上的自演进 Agent Team 组织层。
-
-架构：
-
-```text
-EvoTeam
- ↓
-openJiuwen Core
- ↓
-LLM / Tool
-```
-
----
-
-## Slide 6：核心闭环
-
-```text
-Task
-↓
-Team Formation
-↓
-Execution
-↓
-Evaluation
-↓
-Experience
-↓
-Evolution
-↓
-Validation
-↓
-Next Generation
-```
-
-这页非常关键。
-
----
-
-## Slide 7：三个演进维度
-
-```text
-Prompt Evolution
-Tool Evolution
-Team Evolution
-```
-
-其中突出：
-
-```text
-Team Evolution
-```
-
----
-
-## Slide 8：组织演进示例
-
-Before：
-
-```text
-Planner
-Executor
-Critic
-```
-
-失败：
-
-```text
-numeric_error
-```
-
-After：
-
-```text
-Planner
-Executor
-CodeVerifier
-Critic
-```
-
----
-
-## Slide 9：不是无脑加 Agent
-
-展示：
-
-```text
-Add Agent
-Remove Agent
-Conditional Agent
-```
-
-强调目标：
-
-```text
-Quality / Cost / Latency
-```
-
-共同优化。
-
----
-
-## Slide 10：Validation Gate
-
-```text
-Current
- ↓
-Proposal
- ↓
-Candidate
- ↓
-Validation
- ↙       ↘
-Promote  Rollback
-```
-
-这是非常适合答辩的创新点。
-
----
-
-## Slide 11：系统架构
-
-四层：
-
-```text
-Product
-EvoTeam Core
-OpenJiuwen Adapter
-openJiuwen Core
-```
-
----
-
-## Slide 12：三类任务
-
-```text
-报告生成
-数据分析
-任务规划
-```
-
-展示不同 Team。
-
----
-
-## Slide 13：实验设计
-
-```text
-Single Agent
-Fixed Multi-Agent
-EvoTeam
-```
-
-以及：
-
-```text
-V0
-V1 Prompt Evo
-V2 + Tool Evo
-V3 + Team Evo
-```
-
----
-
-## Slide 14：评价指标
-
-```text
-Quality
-Success Rate
-Token
-Latency
-Agent Count
-Retry
-```
-
----
-
-## Slide 15：开发路线
-
-当前：
-
-```text
-Product Design
-Architecture
-Experiment Design
-```
-
-之后：
-
-```text
-openJiuwen MVP
-→
-3 Agent
-→
-Evaluation
-→
-Evolution
-→
-Web
-→
-Experiments
-```
-
----
-
-## Slide 16：预期成果
-
-- EvoTeam 系统；
-- 三类可复现实验；
-- 自演进 Before / After；
-- Agent Team 可视化；
-- Strategy Generation 历史；
-- 完整项目文档。
-
----
-
-# 3. 汇报时不要过度承诺
-
-当前阶段不要说：
-
-```text
-“我们已经实现动态 Swarm”
-“我们已经实现 RL 自演进”
-“系统可以支持任意复杂任务”
-```
-
-如果还没完成，应说：
-
-```text
-我们已经确定技术路线 / 实验方案，
-下一阶段将完成...
-```
-
----
-
-# 4. 近期需要补齐的 PPT 素材
-
-- [ ] 一张“传统 Agent Team 问题”图
-- [ ] 一张 EvoTeam 总闭环图
-- [ ] 一张系统架构图
-- [ ] 一张 Team Evolution Before / After 图
-- [ ] 一张 Validation Gate 图
-- [ ] 一张 Roadmap
-- [ ] 一张实验矩阵
-- [ ] 一张 openJiuwen 与 EvoTeam 边界图
-
----
-
-# 5. 汇报最值得强调的句子
-
-候选：
-
-> 我们关注的不是“让更多 Agent 一起工作”，而是“让 Agent Team 根据经验改变下一次如何工作”。
-
-以及：
-
-> 自演进不是失败后再试一次，而是让历史经验改变未来策略。
+# EvoTeam 汇报内容规划
+
+汇报围绕一条可核验主线展开：固定起点执行任务，跨任务积累证据，达到阈值才修改 Strategy，独立验证后晋级，稳定时停止探索。主案例固定使用项目计划资源冲突。
+
+## 内容顺序
+
+| 页组 | 要讲清的问题 | 图示或证据 |
+| --- | --- | --- |
+| 项目定位 | EvoTeam 做什么，为谁服务 | 经验驱动的多智能体组织演进系统；主任务输入与输出 |
+| 问题与边界 | 任务内补救怎样区别于跨任务更新 | Retry / Reflection 与 Strategy 版本变化对照 |
+| 主场景 | 为什么从项目计划开始 | 人员、依赖、期限、预算与可校验硬约束 |
+| 固定起点 | 第一次任务怎么跑 | 固定 Role Pool 与 Planner → Executor → Critic v0 |
+| 核心对象 | 到底什么在演进 | Role → AgentConfig → AgentInstance；Strategy 与 Team 的关系 |
+| 六层架构 | 各模块放在哪里 | 输入、能力、策略、运行时、观察经验、离线治理 |
+| 两个闭环 | 哪些每次工作，哪些只在触发后工作 | Orchestrator / Evaluator / Monitor 与 EvolutionManager / Validator |
+| 触发与经验 | 为什么这次需要改变 | 多 Run 模式、支持样本、反例、Policy 阈值 |
+| 归因 | 错误产生与漏检发生在哪里 | Origin、Control、传播路径与检查器证据 |
+| 候选 | 同一个问题有哪些受约束改法 | Prompt A、Tool Policy B、Verifier 结构 C 的 Diff |
+| 独立验证 | 怎么知道候选更好 | 相同任务和资源条件，Evaluator → Validator → Gate |
+| 成本与裁剪 | 增加节点是否值得 | 质量/成本、消融、REMOVE / CONDITIONALIZE |
+| 生命周期 | 什么时候不再演进，退化怎么办 | Current → Stable → Reopen；Reject 与 Rollback |
+| 框架边界 | EvoTeam 与 openJiuwen 分别负责什么 | Domain → RuntimeProtocol → Adapter → openJiuwen |
+| 实验与进度 | 已证明什么，还未完成什么 | 三类任务、对照、P0–P5 实际状态 |
+
+页数与版式按汇报时长安排，不在本文另建一套产品需求。
+
+## 必备图与证据
+
+架构图直接使用 [ARCHITECTURE.md](ARCHITECTURE.md) 的六层、两个闭环及生命周期定义，不再讲当前范围内的 Strategy Family 树。系统控制器、业务 Agent、评价模块与数据对象采用不同标识，避免把它们画成平级 Agent。
+
+实现前只展示机制示例，并标注未运行。实现后展示真实的 Run / Strategy / EvolutionRecord 身份、失败传播、三个候选及 Gate 理由；至少有拒绝或回滚证据，不能只挑成功样本。
+
+## 表达约束
+
+- 三个创新固定为 Strategy as Evolvable Organization、Evidence-driven Bounded Organization Mutation、Evolution Governance。
+- 不把 Prompt 自动优化、多 Agent 数量或记忆检索单独当作项目的核心成果。
+- 不把“每个任务重新组队”“每次运行都演进”作为默认行为。
+- 不宣称已经实现 Role Discovery、Family、分支合并、模型训练或递归自改。
+- 不预填质量提升百分比；区分目标、机制示例、校准参数和测量结果。
+- 相关工作只讲有原文支持的比较维度，不作其他平台“不具备某能力”的绝对断言。
+
+实验口径统一引用 [EXPERIMENTS.md](EXPERIMENTS.md)，阶段状态统一引用 [ROADMAP.md](ROADMAP.md)。旧 HTML 汇报已不适配当前方案，正式演示稿在本提纲与真实证据基础上重新制作。

@@ -1,96 +1,49 @@
 # EvoTeam
 
-> **Building Multi-Agent Teams That Learn, Adapt, and Evolve.**
+EvoTeam 是基于 openJiuwen Core 的经验驱动多智能体组织演进系统。它根据跨任务执行证据，对可版本化的 Strategy 进行受约束修改，经独立验证后改变未来任务默认采用的组织方式。
 
-EvoTeam 是一个基于 **openJiuwen Core** 构建的自演进多智能体协作系统。
-
-当前项目目标不是尽快堆出一个 Demo，而是先回答清楚：
-
-1. 为什么复杂任务需要多智能体协作？
-2. Agent Team 应该如何动态形成与调度？
-3. 系统如何判断一次协作是成功还是失败？
-4. 系统如何从历史任务中学习并改变下一次协作策略？
-5. 如何证明“演进”真实有效，而不是简单 Retry 或改 Prompt？
-
----
-
-## 当前阶段
-
-项目目前处于：
+主场景是复杂项目计划生成与校验。初始 Strategy v0 固定为 **Planner → Executor → Critic**；Role Pool 由开发者定义。系统平时执行当前策略，只有重复失败、性能漂移、成本异常或低贡献证据达到阈值才启动离线演进。策略稳定后进入 STABLE，停止主动探索，继续监控。
 
 ```text
-产品定义 / 架构设计 / 实验设计
+在线执行：Task → Current Strategy → Orchestrator → Team / AgentInstance
+         → Run → Evaluator → SealedRun → Experience → StrategyMonitor
+
+离线演进：Trigger → EvolutionManager → Attribution → Mutation → Candidate
+         → Validator → Improvement Attribution → Validation Gate
+         → Promote / Reject → 后续任务使用已验证的 Strategy
 ```
 
-而不是大规模功能开发阶段。
+## 当前状态
 
-近期优先级：
+产品范围、核心概念、六层架构和两个闭环已按最终讨论统一，进入实现准备阶段。仓库目前只有依赖配置与 `main.py` 占位入口，尚未实现上述业务模块，也没有可运行的 EvoTeam 服务或实验结果。
 
-```text
-明确产品定位
-    ↓
-明确核心创新
-    ↓
-明确架构边界
-    ↓
-明确实验方法
-    ↓
-形成汇报材料
-    ↓
-再进入 MVP 开发
-```
+本轮先完成文档整理；代码开发按 [路线图](docs/ROADMAP.md) 从 P0 领域契约与主任务评价器开始。架构基线不再作为开放式头脑风暴反复改写；具体阈值在基线实验后校准、登记并冻结。
 
----
+## 阅读入口
 
-## 当前技术基线
-
-- Python 3.12
-- uv
-- openJiuwen Core
-- FastAPI（后端候选）
-- React + TypeScript（前端候选）
-- SQLite → PostgreSQL（按阶段演进）
-
-当前原则：
-
-> openJiuwen 负责 Agent 的基础运行能力，EvoTeam 负责 Team 的组织、评价与演进。
-
----
-
-## 文档导航
-
-| 文档 | 作用 |
+| 文档 | 唯一职责 |
 | --- | --- |
-| `DEVELOPMENT.md` | 本地环境、uv、Git 协作 |
-| `AGENTS.md` | Coding Agent 开发规则 |
-| `docs/PROJECT.md` | 赛题与项目定义 |
-| `docs/PRODUCT_VISION.md` | 产品愿景、核心假设与待决策问题 |
-| `docs/ARCHITECTURE.md` | 当前系统架构草案 |
-| `docs/ROADMAP.md` | 从产品设计到比赛版本的阶段计划 |
-| `docs/EXPERIMENTS.md` | 自演进实验与评价设计 |
-| `docs/DECISIONS.md` | 关键架构/产品决策记录 |
-| `docs/PRESENTATION_PLAN.md` | 近期汇报 PPT 结构与素材清单 |
+| [项目定义](docs/PROJECT.md) | 产品目标、主场景、范围、创新与验收 |
+| [架构](docs/ARCHITECTURE.md) | 术语、六层职责、两个闭环、模块与数据契约 |
+| [决策](docs/DECISIONS.md) | 已冻结决策、来源与仍需校准的参数 |
+| [实验](docs/EXPERIMENTS.md) | 数据隔离、对照、归因、Gate 与可复现要求 |
+| [路线图](docs/ROADMAP.md) | P0–P5 实施顺序与阶段验收 |
+| [汇报规划](docs/PRESENTATION_PLAN.md) | 面向最终方案的汇报结构与证据要求 |
+| [相关工作](docs/RELATED_WORK.md) | 既有参考文献入口与后续核验范围 |
+| [开发说明](DEVELOPMENT.md) | 实际环境、依赖与验证命令 |
+| [Agent 约束](AGENTS.md) | 实现必须遵守的边界 |
 
----
+## 设计依据
 
-## 项目状态说明
+[项目计划书 V4](docs/EvoTeam_项目计划书_V4_概念冻结与架构闭环版.docx) 是项目申请材料；[飞书讨论结果](docs/飞书讨论结果/) 保留原始讨论。现行文档以 v2/v3 最终结论与 V4 计划书统一后的基线为准。原始记录中的早期方案、示例数字与示意代码不能直接作为实现要求；来源映射见 [决策](docs/DECISIONS.md)。
 
-当前文档中会使用以下标签：
+## 技术基线
 
-- **[确定]**：当前团队已经接受，可直接作为开发约束。
-- **[假设]**：目前认为合理，但需要实验或讨论验证。
-- **[待定]**：尚未做决定，不应由 Coding Agent 擅自选择。
+Python 3.12、uv、Pydantic、openJiuwen Core。后端相关依赖已经声明；前端选型与开工安排见开发说明。EvoTeam 自己维护领域对象，只有 Runtime Adapter 直接依赖 openJiuwen SDK。
 
----
+```bash
+uv sync
+uv run python --version
+```
 
-## 当前最重要的原则
-
-> Make it observable before making it intelligent.  
-> Make it evaluable before making it evolve.  
-> Make evolution reversible before making it automatic.
-
-对应中文：
-
-> 先让系统可观察，再让系统更智能。  
-> 先让结果可评价，再让系统自演进。  
-> 先让演进可回滚，再让演进自动化。
+完整开发与检查方式见 [DEVELOPMENT.md](DEVELOPMENT.md)。

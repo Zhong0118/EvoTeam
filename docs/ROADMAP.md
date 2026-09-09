@@ -1,334 +1,74 @@
-# EvoTeam Roadmap
+# EvoTeam 实施路线图
 
-> 这不是“尽快写完应用”的开发排期，而是从产品定义到可验证比赛作品的路线图。
+产品和架构按最终讨论冻结，后续工作围绕单条 Strategy 版本链实现闭环。当前只完成仓库依赖与文档准备，`main.py` 仍是占位入口；下列业务能力不能标记为已实现。
 
----
+## P0 领域契约与可评价任务
 
-# Phase -1：产品定义与汇报准备
+目标：将冻结概念转为可测试契约，不重新设计产品。
 
-**当前阶段**
+- 定义固定 Role Pool、AgentConfig、Strategy、Topology、OrchestrationPolicy 与版本身份。
+- 定义 Task / TaskProfile、项目计划输出、Constraint Schema 与明确单位。
+- 建立最小任务正反例，明确资源、依赖、期限、预算的确定性评价规则。
+- 定义 Run / Trace / Evaluation / SealedRun、Experience、Trigger、EvolutionRecord 契约。
+- 定义 Runtime、Store、Evaluator 接口；用 Fake Runtime 测试不依赖模型的规则。
+- 固定 v0 配置及版本化 Prompt；区分测试用参数和正式校准参数。
+- 配置有效的 pytest、Ruff、Pyright 检查，完成当前依赖下的 openJiuwen 集成探针。
 
-目标：
+退出条件：领域配置可序列化与校验，非法引用/结构被拒绝；主任务正反例能独立判分；版本定义与运行状态分离。具体阈值留待 v0 数据校准，不阻塞无模型契约测试。
 
-> 先说明白我们要做什么，以及为什么值得做。
+## P1 在线闭环
 
-任务：
+- 实现 openJiuwen Adapter：Agent 创建、结构化输出、允许的 Tool、异步调用及事件转换。
+- 实现固定 Planner → Executor → Critic 的 Orchestrator。
+- 控制结构化消息、有界返工、Timeout、Budget 与终止原因。
+- 实现独立 Evaluator、Run / Trace / SealedRun 持久化。
+- 核对成功、失败、超时和取消路径；禁止运行中写回 Strategy。
 
-- [x] 明确赛题核心要求
-- [x] 明确 openJiuwen Core 作为基础底座
-- [x] 建立初步架构
-- [ ] 明确最终产品定位
-- [ ] 明确“自演进”的正式定义
-- [ ] 明确 3 个核心创新点
-- [ ] 明确 3 类实验任务
-- [ ] 明确 Before / After 实验设计
-- [ ] 形成第一版产品图
-- [ ] 形成第一版汇报 PPT
+退出条件：真实 v0 能完成主任务并封存可重建的证据；没有 Trigger 时只执行当前策略；SDK 依赖只存在于 Adapter；文档记录可执行入口与实际限制。
 
-退出条件：
+## P2 经验与长期监控
 
-团队成员能够一致回答：
+- 实现 ExperienceStore 与 Aggregator，保存正负证据、范围与反例。
+- 实现按策略版本、任务范围和运行用途分组的 StrategyMonitor。
+- 用 v0 数据校准 window / min_samples、错误、成本、冷却等参数并登记 Policy 版本。
+- 通过稳定窗口与故障注入测试 Trigger / No Trigger。
 
-1. 我们做的是什么？
-2. 为什么不用固定 Workflow？
-3. 为什么一定需要多 Agent？
-4. 什么叫自演进？
-5. 我们的创新和 openJiuwen 自带能力有什么区别？
-6. 我们怎么证明演进有效？
+退出条件：多个 Run 能形成可追溯模式；正常波动不触发无意义演进，稳定状态不生成候选；验证 Run 不污染线上统计。
 
----
+## P3 归因与受约束候选
 
-# Phase 0：仓库与工程基线
+- 实现 Origin / Control 归因与 Contribution Analysis。
+- 实现 Mutation 白名单、结构/权限检查与有限 Candidate 生成。
+- 同时覆盖 Prompt、Tool Policy、Structure 三类候选，支持必要的节点与连边修改。
+- 实现 EvolutionManager 的流程组织和 EvolutionRecord，不把评分权集中到控制器。
+- 高影响或低置信度情况补充消融/反事实证据。
 
-目标：
+退出条件：Trigger 后能生成少量合法、可解释、可比较的 Candidate；每个候选有唯一身份、父版本、Diff 与证据，不能直接服务正式任务。
 
-> 让三个人和 Coding Agent 都可以一致开发。
+## P4 独立验证与生命周期
 
-任务：
+- 实现 Validator，复用 Orchestrator + Evaluator 做隔离配对实验。
+- 实现 Improvement Attribution 与确定性 Gate。
+- 实现 Promote / Reject、Stable / Reopen / Rollback，保留恢复目标与审计。
+- 验证多个候选全部失败、数据不足、晋级后退化、稳定后新错误等路径。
+- 完成资源冲突案例，允许较便宜的 Tool Policy 胜出，不预设增加 Agent 的结论。
 
-- [x] GitHub 仓库
-- [x] main
-- [x] uv
-- [x] Python 3.12
-- [ ] pyproject.toml
-- [ ] uv.lock
-- [ ] .python-version
-- [ ] .gitignore
-- [ ] .env.example
-- [ ] README
-- [ ] DEVELOPMENT
-- [ ] AGENTS
-- [ ] docs 文档体系
-- [ ] pytest
-- [ ] Ruff
-- [ ] Pyright（可稍后）
+退出条件：形成真实 v0 → Candidate → Current 的后续影响，及 Reject / Stable / Reopen / Rollback 证据；候选生成不能访问验证答案，版本切换不影响已开始的 Run。
 
----
+## P5 三类实验与可视化
 
-# Phase 1：openJiuwen 能力验证
+- 完成项目规划主要实验，增加报告与数据分析的较小任务套件。
+- 完成 Single Agent、Fixed Multi-Agent、Retry、无历史动态适配与 Mutation 消融。
+- 运行 Attribution Benchmark、成本、负迁移与停止条件实验。
+- 展示六层、两个闭环、Team Graph、Trace、归因、Candidate Diff、Gate 与版本时间线。
+- 产出复现脚本、实际运行说明、结果、汇报与演示材料。
 
-目标：
+退出条件：三类任务可复现，真实结果与示意分开，能回答为何触发、改了哪里、为何晋级/拒绝、何时停止及怎样恢复。
 
-> 先真正理解框架，而不是直接封装。
+## 实施次序与分工
 
-需要完成最小实验：
+按 P0 → P1 → P2 → P3 → P4 → P5 推进。接口稳定后可按 Domain/Orchestration、Runtime/Storage、Evaluation/Experiment 分配工作；具体人员由团队安排。
 
-- [ ] openJiuwen 单 Agent
-- [ ] LLM 调用
-- [ ] ReActAgent
-- [ ] Tool 调用
-- [ ] 结构化输出
-- [ ] Streaming / async 基础行为
-- [ ] 明确 Context / State 工作方式
+结构 Mutation 属于核心闭环验收，不再沿用“先做完整 Prompt 产品，之后才考虑 Team Evolution”的路线。UI 随已有证据逐步实现，不能用静态展示替代尚未运行的治理机制。
 
-输出：
-
-```text
-examples/openjiuwen_basics/
-```
-
-退出条件：
-
-团队至少两个人能够解释：
-
-> openJiuwen Core 在 EvoTeam 中具体负责什么。
-
----
-
-# Phase 2：EvoTeam Core
-
-目标：
-
-> 建立与框架解耦的核心 Domain。
-
-实现：
-
-- [ ] TaskSpec
-- [ ] TaskProfile
-- [ ] AgentSpec
-- [ ] TeamSpec
-- [ ] Strategy
-- [ ] Run
-- [ ] AgentMessage
-- [ ] TraceEvent
-- [ ] EvaluationResult
-- [ ] EvolutionProposal
-
-同时：
-
-- [ ] Runtime Protocol
-- [ ] Store Protocol
-- [ ] Evaluator Protocol
-
----
-
-# Phase 3：最小三 Agent 协作
-
-目标：
-
-```text
-Planner
- ↓
-Executor
- ↓
-Critic
-```
-
-实现：
-
-- [ ] Planner
-- [ ] Executor
-- [ ] Critic
-- [ ] TeamOrchestrator
-- [ ] Structured Message
-- [ ] Trace Events
-
-初始任务建议：
-
-```text
-Task Planning
-```
-
-因为不依赖外部搜索和代码执行。
-
----
-
-# Phase 4：Evaluation First
-
-目标：
-
-> 先让结果可测量。
-
-实现：
-
-- [ ] Evaluation Rubric
-- [ ] LLM Judge
-- [ ] Rule-based Checks
-- [ ] Failure Tags
-- [ ] Token Metrics
-- [ ] Latency Metrics
-- [ ] Run Comparison
-
-退出条件：
-
-同一个任务的两个 Strategy 可以被明确比较。
-
----
-
-# Phase 5：Persistence & Observability
-
-实现：
-
-- [ ] SQLite
-- [ ] Task Store
-- [ ] Run Store
-- [ ] Trace Store
-- [ ] Evaluation Store
-- [ ] Strategy Version Store
-
-之后才考虑：
-
-- [ ] API
-- [ ] SSE
-- [ ] 简单 Web Timeline
-
----
-
-# Phase 6：Prompt Evolution v1
-
-第一版真正的 Self-Evolution。
-
-```text
-Failure Tags
- ↓
-Failure Pattern
- ↓
-Prompt Candidate
- ↓
-Validation
- ↓
-Promote / Rollback
-```
-
-实现：
-
-- [ ] Trigger
-- [ ] Proposal
-- [ ] Prompt Version
-- [ ] Validation Dataset
-- [ ] Promotion
-- [ ] Rollback
-
----
-
-# Phase 7：Tool Policy Evolution
-
-候选：
-
-```text
-算数任务
-LLM → Python
-
-搜索型任务
-无 Search → Search
-```
-
-实现需建立：
-
-- Tool Success Rate
-- Tool Cost
-- Tool Selection History
-
----
-
-# Phase 8：Team Evolution
-
-比赛最重要阶段之一。
-
-实现：
-
-- [ ] Add Agent
-- [ ] Remove Agent
-- [ ] Change Role
-- [ ] Change Edge
-- [ ] Conditional Agent
-- [ ] Team Version
-
-目标：
-
-> 演进不只是修改 Prompt，而是改变组织结构。
-
----
-
-# Phase 9：三类任务实验
-
-### Track A：报告生成
-
-### Track B：数据分析
-
-### Track C：任务规划
-
-每类任务：
-
-- [ ] Baseline
-- [ ] EvoTeam
-- [ ] Before / After
-- [ ] Ablation
-- [ ] Cost / Latency
-- [ ] Repeatability
-
----
-
-# Phase 10：产品化展示
-
-这时再投入 UI。
-
-重点：
-
-```text
-Task
-Team Graph
-Timeline
-Evaluation
-Evolution
-Generation History
-```
-
-不是优先做聊天框。
-
----
-
-# Phase 11：比赛版本
-
-需要：
-
-- [ ] README
-- [ ] Quick Start
-- [ ] Demo Script
-- [ ] 实验结果
-- [ ] 演进案例
-- [ ] 架构图
-- [ ] PPT
-- [ ] 演示视频
-- [ ] 文档
-- [ ] 可复现脚本
-
----
-
-# 近期优先级
-
-当前几天：
-
-```text
-P0 产品定义
-P0 汇报材料
-P0 架构
-P0 实验设计
-
-P1 环境初始化
-P1 openJiuwen 学习验证
-
-P2 代码 MVP
-```
-
-当前不要被“赶紧做页面”带偏。
+下一项代码任务从 P0 的 RoleDefinition、AgentConfig、Strategy 契约和项目规划评价样例开始。前置决策见 [DECISIONS.md](DECISIONS.md)，完整模块边界见 [ARCHITECTURE.md](ARCHITECTURE.md)。
