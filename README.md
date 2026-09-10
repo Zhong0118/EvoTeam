@@ -41,6 +41,7 @@ EvoTeam 是基于 openJiuwen Core 的经验驱动多智能体组织演进系统�
 | [下一步总览](docs/NEXT_STEPS.md) | 供负责人统筹：依赖、检查时点与里程碑 |
 | [任务书 A](docs/TASK_CORE.md) | 核心组员及其 Codex 的执行范围、接口和验收 |
 | [任务书 B](docs/TASK_PRESENTATION.md) | 展示组员及其 Codex 的接口、前端和 PPT 任务 |
+| [前端设计规范](docs/FRONTEND_SPEC.md) | 固定技术栈、四类页面布局、内容、操作、动画与验收 |
 | [路线图](docs/ROADMAP.md) | P0–P5 实施顺序与阶段验收 |
 | [PPT 总体设计](docs/PRESENTATION_PLAN.md) | 逐页文案、布局、样式、讲稿与截图素材槽位 |
 | [相关工作](docs/RELATED_WORK.md) | 既有参考文献入口与后续核验范围 |
