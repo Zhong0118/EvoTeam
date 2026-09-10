@@ -110,6 +110,7 @@ class Validator:
                         RunStatus.CANCELLED,
                     }:
                         raise ValueError("验证 Run 未终结")
+                    run.dataset_source = source
                     evaluation = await self.evaluator.evaluate(task_copy, run)
                     if evaluation.evaluator_ref != plan.evaluator_ref:
                         raise ValueError("实际 Evaluator 与预注册 ValidationPlan 不一致")

@@ -365,6 +365,7 @@ class SQLiteRunStore:
                 trace_refs=tuple(event.event_id for event in trace),
                 evaluation=evaluation,
                 output_ref=run.output_ref,
+                dataset_source=run.dataset_source,
             )
             snapshot = RunSnapshot(task=task, strategy=strategy, run=run)
             conn.execute(
@@ -414,11 +415,15 @@ class SQLiteRunStore:
     async def read_snapshot(self, run_id: str) -> RunSnapshot:
         with self.engine.connect() as conn:
             value = conn.execute(
-                select(runs.c.snapshot).where(runs.c.run_id == run_id)
-            ).scalar_one_or_none()
+                select(runs.c.snapshot, runs.c.sealed).where(runs.c.run_id == run_id)
+            ).one_or_none()
         if value is None:
             raise KeyError(run_id)
-        return RunSnapshot.model_validate_json(value)
+        snapshot = RunSnapshot.model_validate_json(value[0])
+        sealed = SealedRun.model_validate_json(value[1])
+        if snapshot.run.dataset_source != sealed.dataset_source:
+            raise ValueError("封存索引与快照数据来源不一致")
+        return snapshot
 
     async def events_for_run(self, run_id: str) -> tuple[TraceEvent, ...]:
         with self.engine.connect() as conn:

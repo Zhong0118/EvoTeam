@@ -50,10 +50,17 @@ def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTea
     analyzer = TaskAnalyzer()
     orchestrator = Orchestrator(runtime, events)
     evaluator = ProjectPlanningEvaluator()
-    tasks = TaskService(analyzer, orchestrator, evaluator, storage.runs, storage.strategies)
+    datasets = PackagedValidationDatasets()
+    tasks = TaskService(
+        analyzer,
+        orchestrator,
+        evaluator,
+        storage.runs,
+        storage.strategies,
+        dataset_source_resolver=datasets.history_source_for,
+    )
 
     # 验证复用同一执行器和评价器；不能另建一套更宽松的 Candidate 评分流程。
-    datasets = PackagedValidationDatasets()
     validator = Validator(
         orchestrator,
         evaluator,

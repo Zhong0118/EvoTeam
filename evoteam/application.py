@@ -1,8 +1,10 @@
 """模块级调度：在线任务与离线观察分开进入，不在每个任务中自动演进。"""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import uuid4
 
+from evoteam.domain.dataset import DatasetPartition, DatasetSource, task_fingerprint
 from evoteam.domain.evolution import EvolutionRecord, MonitorResult, ValidationPlan
 from evoteam.domain.run import RunPurpose, RunStatus, SealedRun
 from evoteam.domain.strategy import Strategy, StrategyStatus
@@ -42,21 +44,35 @@ class TaskService:
         evaluator: Evaluator,
         runs: RunStore,
         strategies: StrategyStore,
+        dataset_source_resolver: Callable[[Task], DatasetSource | None] | None = None,
     ) -> None:
         self.analyzer = analyzer
         self.orchestrator = orchestrator
         self.evaluator = evaluator
         self.runs = runs
         self.strategies = strategies
+        self.dataset_source_resolver = dataset_source_resolver
 
-    async def execute(self, task: Task, *, strategy_id: str) -> SealedRun:
+    async def execute(
+        self, task: Task, *, strategy_id: str, dataset_source: DatasetSource | None = None
+    ) -> SealedRun:
         """固定当前版本 → 解析 → 执行 → 独立评分 → Store 原子封存。
 
+        dataset_source 必须是调用方在执行前固定的 History 来源；缺省由装配的解析器查找。
+        未登记普通 Task 仍可运行，但缺少来源的记录不能作为演进 History 证据。
         Task 类型作为当前默认观察范围；细分范围尚未引入自动路由。
         失败/超时/取消 RunResult 同样评分封存。组件异常原样传播，不能返回假成功；
         Runtime 异常由 Orchestrator 转为终结 RunResult；基础设施故障恢复仍待实现。
         """
         task = task.model_copy(deep=True)
+        if dataset_source is None and self.dataset_source_resolver is not None:
+            dataset_source = self.dataset_source_resolver(task)
+        if dataset_source is not None and (
+            dataset_source.partition != DatasetPartition.HISTORY
+            or dataset_source.task_id != task.task_id
+            or dataset_source.task_fingerprint != task_fingerprint(task)
+        ):
+            raise ValueError("在线 Task 数据来源与 History 输入不一致")
         strategy = await self.strategies.current(strategy_id)
         _require_serving(strategy, strategy_id)
         profile = self.analyzer.analyze(task)
@@ -81,6 +97,7 @@ class TaskService:
         if run.status not in _TERMINAL:
             raise ValueError("Run 尚未结束，不能评价和封存")
 
+        run.dataset_source = dataset_source
         evaluation = await self.evaluator.evaluate(task, run)
         if evaluation.run_id != run_id:
             raise ValueError("EvaluationResult 与当前 Run 不匹配")
@@ -94,6 +111,7 @@ class TaskService:
             or sealed.status != run.status
             or sealed.evaluation != evaluation
             or sealed.task_scope != task.task_type.value
+            or sealed.dataset_source != dataset_source
         ):
             raise ValueError("封存记录与已执行的 Run 不匹配")
         return sealed

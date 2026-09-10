@@ -73,6 +73,17 @@ class ManifestDatasets:
             )
         raise ValueError(f"{partition.value.title()} Task ID 未在版本化清单登记")
 
+    def history_source_for(self, task: Task) -> DatasetSource | None:
+        """Pin registered History at execution; ordinary online tasks remain allowed."""
+        if any(
+            entry.task_id == task.task_id
+            for dataset in self.manifest.datasets
+            if dataset.partition == DatasetPartition.HISTORY
+            for entry in dataset.tasks
+        ):
+            return self.source_for(task, partition=DatasetPartition.HISTORY)
+        return None
+
 
 class PackagedValidationDatasets(ManifestDatasets):
     """仓库默认项目规划清单；保留旧类名作为兼容入口。"""
@@ -88,7 +99,7 @@ class PackagedValidationDatasets(ManifestDatasets):
 
 
 class ManifestHistoryValidator:
-    """只读取 History 注册和封存快照，不读取 Validation/Final Test 任务。"""
+    """核对执行时封存的 History 来源，不用最新清单重写历史身份。"""
 
     def __init__(self, datasets: ManifestDatasets, runs: RunStore) -> None:
         self.datasets = datasets
@@ -106,9 +117,19 @@ class ManifestHistoryValidator:
                 or snapshot.run.task_id != sealed.task_id
             ):
                 raise ValueError("History Run 与封存 TaskSnapshot 身份不匹配")
-            sources.append(
-                self.datasets.source_for(snapshot.task, partition=DatasetPartition.HISTORY)
-            )
+            source = sealed.dataset_source
+            if source is None:
+                raise ValueError("History 封存缺少执行时数据来源，不能追溯推断")
+            if (
+                snapshot.run.dataset_source != source
+                or source.partition != DatasetPartition.HISTORY
+                or source.task_id != sealed.task_id
+                or source.task_fingerprint != task_fingerprint(snapshot.task)
+                or snapshot.run.purpose != sealed.purpose
+                or snapshot.run.strategy != sealed.strategy
+            ):
+                raise ValueError("History 数据来源与封存快照不一致")
+            sources.append(source)
         return tuple(sources)
 
 

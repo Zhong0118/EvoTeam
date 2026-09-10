@@ -1,0 +1,104 @@
+{
+  "manifest_ref": {
+    "id": "project-planning-manifest",
+    "version": "2"
+  },
+  "dataset_ref": {
+    "id": "project-planning-history",
+    "version": "2"
+  },
+  "strategy_file": "examples/project_planning/strategy.json",
+  "strategy_ref": {
+    "strategy_id": "project-planning",
+    "version": 0
+  },
+  "evaluator_ref": {
+    "id": "project-planning-rules",
+    "version": "1"
+  },
+  "experiment_id": "n4-fixed-comparison-v1",
+  "phase": "comparison",
+  "approved_scope": "fixed_candidates_offline_only",
+  "expected_model": {
+    "ref": {
+      "id": "deepseek-v4-flash",
+      "version": "api-2026-09"
+    },
+    "model_name": "deepseek-v4-flash",
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_output_tokens": 4096,
+    "timeout_seconds": 60.0
+  },
+  "maximum_model_requests": 50,
+  "additional_prompt_refs": [
+    {
+      "id": "executor",
+      "version": "v1-resource-check"
+    },
+    {
+      "id": "verifier",
+      "version": "v0"
+    }
+  ],
+  "validation_plan": {
+    "dataset_ref": {
+      "id": "project-planning-validation",
+      "version": "1"
+    },
+    "evaluator_ref": {
+      "id": "project-planning-rules",
+      "version": "1"
+    },
+    "repeats": 1,
+    "seeds": [
+      7
+    ]
+  },
+  "final_test_ref": {
+    "id": "project-planning-final-test",
+    "version": "1"
+  },
+  "monitor_policy": {
+    "ref": {
+      "id": "project-planning-monitor",
+      "version": "n4-baseline-c1204d3"
+    },
+    "window_size": 6,
+    "min_samples": 6,
+    "repeated_failure_threshold": 2,
+    "quality_drop_threshold": 0.1,
+    "cost_overrun_threshold": 0.25,
+    "low_contribution_threshold": 0.01,
+    "cooldown_runs": 6,
+    "max_candidates": 2,
+    "stable_window_count": 3,
+    "enabled_triggers": [
+      "repeated_failure"
+    ]
+  },
+  "gate_policy": {
+    "ref": {
+      "id": "n4-conservative-research-gate",
+      "version": "1"
+    },
+    "minimum_quality_gain": 0,
+    "maximum_quality_regression": 0,
+    "maximum_token_increase": 0.25,
+    "maximum_latency_increase": 0.5,
+    "minimum_paired_runs": 6,
+    "minimum_independent_tasks": 6,
+    "maximum_subclass_success_regression": 0
+  },
+  "protocol": {
+    "candidate_order": [
+      "executor_prompt_v1_resource_check",
+      "add_verifier_v0"
+    ],
+    "validation_reuse_limit": 2,
+    "selection_rule": "research_only_no_promotion",
+    "final_test_rule": "evaluate_incumbent_once_after_both_gates",
+    "gate_rationale": "现有基线六题仅作描述；质量不允许退化，成本和延迟上限为开发者约束而非统计估计。要求至少六个独立验证任务，现有两题不足，不支持正式晋级。",
+    "scope_limit": "固定研究对照用于补齐N4证据，不能称为Monitor自动触发演进或充分样本的正式收益验证。"
+  }
+}

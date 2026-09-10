@@ -35,6 +35,7 @@ class RunStore(Protocol):
     ) -> SealedRun:
         """原子保存 Task/Run 快照、评价及封存索引后返回，不能只构造索引。
 
+        必须保存 run.dataset_source 原始执行来源，不得用当前清单回填。
         P1 Repository 实现应拒绝覆盖封存数据，保留失败与取消，产生封存事件。
         """
         ...

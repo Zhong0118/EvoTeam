@@ -209,3 +209,12 @@ uv run python -m evoteam migrate \
 失败时不要删除备份或反复使用同一备份路径。先保持应用停止，使用 `sqlite3 <备份路径> 'PRAGMA quick_check;'` 验证备份；保留失败数据库作为独立文件，再把备份复制回原数据库路径。备份仍是迁移前布局：若继续使用当前代码，应为恢复后的库选择另一个新备份路径并重新执行迁移；若临时回退旧代码，则直接使用与该旧代码对应的备份布局。迁移不能恢复因进程硬退出遗留的活动 claim，也不会自动清除它。
 
 本次 main 与功能分支的审查、进展和后续次序统一维护在 [VERSION_COMPARISON](docs/VERSION_COMPARISON.md)。新增 evolution_claims 表；旧数据库不能直接 open，升级需备份后显式建表并核验，不删除原始运行证据。当前没有自动迁移或进程崩溃后的 claim 恢复工具。
+
+
+## 实验复现与审查修复
+
+迁移路径使用编码的文件 URI，含 `#`/`?` 的文件名不会打开邻近数据库。Run 新增可空 DatasetSource，执行前固定并随索引/快照封存；旧 JSON 可读，缺执行时来源的旧 Run 不进入新演进。
+
+`experiment_manifest.py` 核对评价器、模型设置、代码状态并写 preflight；基线失败/取消保留终态报告。`n4_campaign.py` 和 `scripts/run_n4_campaign.py` 提供有限对照、Gate、隔离 Final Test、脱敏证据及按用途统计，复用核心执行/验证模块。命令、最多 50 次请求和统计限制见 [EXPERIMENTS](docs/EXPERIMENTS.md) §2.4。
+
+真实 N4 对照尚未执行，当前缺本地完整模型配置；三项修复与离线回归完成不等于真实实验或晋级收益验收。

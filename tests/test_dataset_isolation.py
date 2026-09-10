@@ -206,7 +206,7 @@ class _SnapshotRuns:
 
 
 @pytest.mark.asyncio
-async def test_history_validator_resolves_manifest_and_rejects_renamed_or_changed_content():
+async def test_history_validator_uses_sealed_source_and_rejects_renamed_or_changed_content():
     manifest = DatasetManifest.model_validate_json(MANIFEST.read_text())
     datasets = ManifestDatasets(manifest)
     history = next(dataset for dataset in manifest.datasets if dataset.partition == "history")
@@ -221,8 +221,10 @@ async def test_history_validator_resolves_manifest_and_rejects_renamed_or_change
         purpose=RunPurpose.ONLINE,
         status=RunStatus.COMPLETED,
     )
+    source = datasets.source_for(entry.task, partition=DatasetPartition.HISTORY)
+    run.dataset_source = source
     snapshot = RunSnapshot(task=entry.task, strategy=strategy, run=run)
-    sealed = _sealed(entry.task)
+    sealed = _sealed(entry.task).model_copy(update={"dataset_source": source})
     validator = ManifestHistoryValidator(
         datasets, cast(Any, _SnapshotRuns({sealed.run_id: snapshot}))
     )

@@ -103,7 +103,7 @@ class DatasetManifest(FrozenModel):
 
 
 class DatasetSource(FrozenModel):
-    """从封存 Run 的 Task 反查到的版本化清单记录。"""
+    """执行前固定、随 Run 封存的版本化数据来源。"""
 
     manifest_ref: AssetRef
     dataset_ref: AssetRef

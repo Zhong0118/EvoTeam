@@ -327,3 +327,23 @@ def test_cli_migrate_requires_explicit_paths_and_reports_success(tmp_path, capsy
     assert capsys.readouterr().out.strip() == '{"migrated": true, "schema_version": 3}'
     assert backup.exists()
     assert _schema_version(database) == CURRENT_SCHEMA_VERSION
+
+
+@pytest.mark.parametrize("suffix", ["#1.db", "?1.db"])
+def test_migration_targets_literal_filename_and_preserves_neighbor(tmp_path, suffix):
+    import sqlite3
+
+    neighbor = tmp_path / "history"
+    target = tmp_path / f"history{suffix}"
+    backup = tmp_path / "backup.db"
+    _create_historical_database(neighbor, BASE_TABLES)
+    # SQLAlchemy also parses ?; use sqlite backup to create the literal filename.
+    with sqlite3.connect(neighbor) as source, sqlite3.connect(target) as destination:
+        source.backup(destination)
+    upgrade_database(target, backup=backup)
+    with sqlite3.connect(target) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == CURRENT_SCHEMA_VERSION
+    with sqlite3.connect(neighbor) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 0
+    with sqlite3.connect(backup) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 0

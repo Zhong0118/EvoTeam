@@ -52,6 +52,32 @@ uv run python -m scripts.run_n4_baseline \
 
 清单加载时重新计算并核对每条摘要；未登记引用、同引用内容变化、空分区、重复 ID 和跨分区内容重复均在模型调用前拒绝。Validator 只能把 `validation` 数据集作为 `ValidationPlan.dataset_ref`，`final_test` 引用不能进入候选选择。EvolutionManager 在归因和候选生成前，通过封存 Run 的 `RunSnapshot.task` 只反查 History 登记，不加载 Validation 或 Final Test；反查结果包含 manifest、dataset、task fingerprint 与 subclass，可用于从历史 Run 追溯清单版本。CandidateGenerator 的输入仍只有 Current Strategy、Failure Attribution 和 Policy。
 
+### 2.3 执行时来源与预检快照
+
+新 Run 在执行前固定 `DatasetSource`，封存索引和快照保存 manifest_ref、dataset_ref、partition、task_id、fingerprint、subclass。历史校验核对已封存来源，清单升级不会改变旧 Run 身份。旧记录仍可读取，但缺来源时拒绝进入新演进，不用当前清单补造执行时身份。
+
+真实实验在创建 Runtime 前独占保存 `preflight.json`：代码提交、输入内容与摘要、实际模型参数、完整评价器引用、Prompt 内容摘要和预算。已跟踪代码有未提交修改时拒绝开始；`expected_model` 存在时必须逐项匹配，N4 对照要求提供此字段。报告采用预检值，不在结束后重读摘要。失败/取消保存终态与已完成记录，取消不继续下一题，输出目录禁止隐式续跑。
+
+### 2.4 N4 有限对照：已实现，真实执行待模型配置
+
+配置为 `examples/experiments/n4_comparison_v1.json`。独立数据库中的研究对照复用正式 Orchestrator、Evaluator、Validator、Improvement Attribution 和 Gate。两个研究臂预先指定为 executor@v1-resource-check、verifier@v0，不伪造 Trigger，不称为自动演进，不修改已有服务数据库。
+
+固定顺序：History 六题 v0 → Prompt Candidate 两题配对 → Verifier Candidate 两题配对 → 当前策略 Final Test 两题。每组一次重复，Validation 只用于这两种已确定候选。两组 Gate 保存后才读取 Final Test，不能据其结果再挑候选或调门槛。
+
+沿用历史基线模型参数、零 Retry，最多 **50 次模型请求**：6×3 + 2×(3+3) + 2×(3+4) + 2×3。失败请求计入上限。Monitor 沿用基线规则；研究 Gate 禁止质量/子类退化，要求至少六个独立验证任务、Token 增幅最多 25%、延迟增幅最多 50%。成本和延迟边界为开发者研究约束，并非六题基线估出的统计结论。当前 Validation 两题不能满足六题门槛，不降低门槛制造 PASS；本批不晋级，只进行有限对照与服务策略最终测试。充分样本的收益校准和自动晋级仍须补数据并走既有 Manager 流程。
+
+```bash
+# 仅预检，不创建模型 Runtime；预检目录不可用于隐式续跑。
+uv run python -m scripts.run_n4_campaign --config examples/experiments/n4_comparison_v1.json --env-file /absolute/path/to/local.env --output runs/n4-preflight-v1 --preflight-only
+
+# 真实执行使用新目录，需要可用的本地模型配置。
+uv run python -m scripts.run_n4_campaign --config examples/experiments/n4_comparison_v1.json --env-file /absolute/path/to/local.env --output runs/n4-fixed-comparison-v1
+```
+
+`campaign_report.json` 保存冻结身份、候选配置、逐题配对、改进归因、Gate、服务版本前后、Final Test ID、脱敏快照和事件。`metrics_by_purpose` 分开报告线上基线、离线验证及最终测试的成功数/总数、Token、实例数、Retry、工具数和延迟；未知值保留，另列已知小计。费用未知时不换算金额，失败/超时/取消均保留。
+
+当前端到端离线测试已覆盖这条路径、重复执行、取消和预算拒绝，尚无本批真实报告。旧 `n4-baseline-v0-history2-r1` 是历史结果，不能冒充修复后重跑。模型配置与真实结果未就绪前，N4 不标全部完成。
+
 ## 3. 对照与消融
 
 | 方案 | 设置 | 回答的问题 |

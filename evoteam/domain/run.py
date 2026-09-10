@@ -2,8 +2,9 @@
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from evoteam.domain.agent import AgentInstance, AgentResult
 from evoteam.domain.common import (
@@ -14,6 +15,7 @@ from evoteam.domain.common import (
     NonNegativeInt,
     StrategyRef,
 )
+from evoteam.domain.dataset import DatasetPartition, DatasetSource, task_fingerprint
 from evoteam.domain.evaluation import EvaluationResult
 from evoteam.domain.strategy import Edge, Strategy
 from evoteam.domain.task import Task
@@ -53,6 +55,7 @@ class RunResult(DomainModel):
     strategy: StrategyRef
     purpose: RunPurpose
     status: RunStatus
+    dataset_source: DatasetSource | None = None
     team: Team | None = None
     results: list[AgentResult] = Field(default_factory=list)
     output_ref: str | None = None
@@ -72,6 +75,7 @@ class SealedRun(FrozenModel):
     strategy: StrategyRef
     purpose: RunPurpose
     status: RunStatus
+    dataset_source: DatasetSource | None = None
     sealed_at: datetime
     snapshot_ref: Identifier
     trace_refs: tuple[str, ...]
@@ -85,3 +89,27 @@ class RunSnapshot(FrozenModel):
     task: Task
     strategy: Strategy
     run: RunResult
+
+    @model_validator(mode="after")
+    def verify_dataset_source(self) -> Self:
+        validate_run_source(self.task, self.run)
+        return self
+
+
+def validate_run_source(task: Task, run: RunResult) -> None:
+    """Legacy runs may lack provenance; declared sources must match execution."""
+    source = run.dataset_source
+    if source is None:
+        return
+    expected = {
+        RunPurpose.ONLINE: DatasetPartition.HISTORY,
+        RunPurpose.VALIDATION: DatasetPartition.VALIDATION,
+        RunPurpose.FINAL_TEST: DatasetPartition.FINAL_TEST,
+    }.get(run.purpose)
+    if (
+        source.task_id != task.task_id
+        or source.task_id != run.task_id
+        or source.task_fingerprint != task_fingerprint(task)
+        or (expected is not None and source.partition != expected)
+    ):
+        raise ValueError("Run 数据来源与 Task / Purpose 不一致")

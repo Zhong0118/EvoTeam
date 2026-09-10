@@ -129,7 +129,7 @@ _CREATE_SQL = {
 
 def _connect(database: Path, *, read_only: bool = False) -> sqlite3.Connection:
     mode = "ro" if read_only else "rw"
-    return sqlite3.connect(f"file:{database}?mode={mode}", uri=True, isolation_level=None)
+    return sqlite3.connect(f"{database.as_uri()}?mode={mode}", uri=True, isolation_level=None)
 
 
 def _table_names(connection: sqlite3.Connection) -> frozenset[str]:

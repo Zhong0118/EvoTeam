@@ -130,6 +130,8 @@ assert all(p.current_run_id != p.candidate_run_id for p in result.pairs)
 
 ## N4：固定真实基线，再做候选比较
 
+**当前交付：** 三项审查修复已实现；有限对照入口、冻结配置和离线回归已准备，见 EXPERIMENTS §2.3–2.4。真实比较与 Final Test 等待可用模型配置，不能用测试勾选真实实验完成；研究对照不冒充自动晋级。
+
 **产物：** 更新 `docs/EXPERIMENTS.md` 的有效协议；配置保存在 `examples/experiments/`，脱敏报告保存在 `runs/<experiment_id>/`，数据库、日志和密钥不入 Git。
 
 - [ ] 使用 N2 清单，在调用模型前登记代码提交、数据摘要、模型/Prompt/评价器版本、预算、温度和 top_p，以及请求次数上限；有效凭据仅留本地环境。
