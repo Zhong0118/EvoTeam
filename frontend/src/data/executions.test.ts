@@ -68,6 +68,16 @@ describe("execution contract samples follow the fixed F0 DTOs", () => {
     expect(errors.join("\n")).toContain("w9");
   });
 
+  it("reports duplicate work ids without a spurious cycle message", () => {
+    const valid = submits.valid as { task: { inputs: Record<string, unknown> } };
+    const inputs = structuredClone(valid.task.inputs);
+    const workItems = inputs.work_items as Record<string, unknown>[];
+    workItems.push(structuredClone(workItems[0]));
+    const errors = validatePlanningInput(inputs);
+    expect(errors.some((message) => message.includes("必须唯一"))).toBe(true);
+    expect(errors.some((message) => message.includes("循环"))).toBe(false);
+  });
+
   it("parses event pages with ordered sequences and a real cursor", () => {
     for (const page of Object.values(events)) {
       const parsed = executionEventsPageSchema.parse(page);

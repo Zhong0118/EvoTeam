@@ -140,8 +140,8 @@ export function validatePlanningInput(inputs: unknown): string[] {
       worksValid = false;
       continue;
     }
-    if (seenWorks.has(work.work_id))
-      issues.push(`work_id 必须唯一: ${work.work_id}`);
+    const duplicateWork = seenWorks.has(work.work_id);
+    if (duplicateWork) issues.push(`work_id 必须唯一: ${work.work_id}`);
     else seenWorks.add(work.work_id);
     if (!text(work.description)) issues.push(`工作项缺少描述: ${work.work_id}`);
     if (!intAtLeast(work.duration_hours, 1))
@@ -155,7 +155,9 @@ export function validatePlanningInput(inputs: unknown): string[] {
     }
     if (new Set(work.dependencies).size !== work.dependencies.length)
       issues.push(`dependencies 必须唯一: ${work.work_id}`);
-    parsedWorks.push({ work_id: work.work_id, dependencies: work.dependencies });
+    // 重复 work_id 已报告唯一性问题；不进入拓扑检查，避免误报循环。
+    if (!duplicateWork)
+      parsedWorks.push({ work_id: work.work_id, dependencies: work.dependencies });
   }
 
   const known = seenWorks;
