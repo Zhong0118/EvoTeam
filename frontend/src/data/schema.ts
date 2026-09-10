@@ -112,6 +112,8 @@ export const runSchema = z.object({
         instance_id: z.string(),
         node_id: z.string(),
         state: z.string(),
+        input_tokens: z.number().nullable().optional(),
+        output_tokens: z.number().nullable().optional(),
         messages: z.array(
           z.object({
             message_id: z.string(),

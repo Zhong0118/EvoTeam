@@ -173,6 +173,8 @@ async def run_detail(store: RunStore, run_id: str) -> tuple[dict[str, Any], list
                 "instance_id": i.instance_id,
                 "node_id": i.config.node_id,
                 "state": i.state.value,
+                "input_tokens": i.result.input_tokens if i.result else None,
+                "output_tokens": i.result.output_tokens if i.result else None,
                 "messages": [
                     m.model_dump(
                         mode="json",

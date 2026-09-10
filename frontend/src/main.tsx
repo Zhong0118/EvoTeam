@@ -8,7 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { Layout } from "./app/layout";
-import { SessionShell } from "./pages/session";
+import { Session } from "./pages/session";
 import { Runs } from "./pages/runs";
 import { RunDetail } from "./pages/run-detail";
 import { Trace } from "./pages/trace";
@@ -21,6 +21,7 @@ const Evolutions = React.lazy(() =>
 import { Strategies } from "./pages/strategies";
 import { Empty } from "./components/evidence/common";
 import "./styles/theme.css";
+import "./styles/session.css";
 
 // V2 规范 §20：旧一级路由保留为兼容跳转，实际页面归入 /dashboard 后台工作台。
 function LegacyRedirect() {
@@ -44,8 +45,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       >
         <Routes>
-          <Route index element={<SessionShell />} />
-          <Route path="sessions/:sessionId" element={<SessionShell />} />
+          <Route index element={<Session />} />
+          <Route path="sessions/:sessionId" element={<Session />} />
           <Route path="dashboard" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard/runs" replace />} />
             <Route path="runs" element={<Runs />} />
