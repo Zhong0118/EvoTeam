@@ -1,144 +1,184 @@
-# 任务书 B：展示接口、前端与 PPT
+# 网页任务执行与展示开发计划
 
-## 给组员及其 Codex 的身份说明
+**目标：** 在已有证据工作台之外，交付“输入任务 → 真实执行进度 → 结果 → 完整证据”的用户入口。
 
-**被指派阅读并执行本文件，即承担“执行者 B：展示开发”的职责。** B是固定任务代号，不是姓名。不得因为当前聊天用户给出了任务，就将其认定为项目总负责人。
+**实现依据：** [FRONTEND_SPEC](FRONTEND_SPEC.md) 定页面与交互；本文件定任务顺序、接口、文件边界与验收。冻结领域与演进规则仍以 AGENTS、ARCHITECTURE、EXPERIMENTS、DECISIONS 为准。
 
-当前前端由项目负责人及其 Codex 接手，B 继续表示展示任务范围，不再表示原组员身份。前端和只读查询由当前开发任务完成；PPT 制作仍按原计划单独执行。
+**执行者：** 当前网页功能由项目负责人及其 Codex 接手。B 只是历史展示任务代号，不再指原组员；不要把负责人重新安排为仅验收、不写前端。A 继续执行 [TASK_CORE](TASK_CORE.md) 的 R1/R2，本计划不要求 A 同时实现下面全部任务。
 
-本轮范围：**B0–B4**。核心A0、N1–N4属于执行者A，缺少核心依赖不代表B获得修改核心模块的授权。本文件、FRONTEND_SPEC与PRESENTATION_PLAN共同确定B的工作，不必从总计划猜测职责。
+**技术与边界：** 复用 React/TypeScript/Vite、Tailwind v4、Radix 组件、React Flow/Recharts、FastAPI、SQLite 与现有 TaskService。首次用有界轮询传递实时状态；不引入 Redis、Celery、微服务或新的 Agent 框架。页面不重新计算评价或 Gate。
 
-### 当前交付状态
+> 给下一次 Codex 的指令：先核对 main，阅读本文件和 FRONTEND_SPEC，按 F0 → F1 → F2 → F3 → F4 → F5 实现网页任务闭环。F3 的表单可在 F0 契约确定后独立开发，但真实提交必须等待 F1/F2。逐项先写失败测试、实现、验证再提交，不重建已有工作台。只执行首轮 F0–F5；E1/E2、T1、D1、P1 是后续排期，不顺便启动模型实验。开发验证使用独立临时库与 Fake Runtime；真实任务需要服务端模型配置和明确的运行预算。执行计划时使用 executing-plans 按任务推进，无需另起多份日期计划。
 
-B0/B1 首版四类页面、六类只读查询、Run 脱敏导出、配置差异、Trace 回放已实现，启动见 [frontend/README](../frontend/README.md)。真实 SQLite/HTTP 联调使用独立无模型演示库验证；`frontend/screenshots/` 是开发样例截图，不是 N4 真实实验素材。
+## 1. 当前实际交付与未实现内容
 
-下一步：用团队批准的完整实测数据库做 B3 素材核对，补 Evolution 引用闭包导出与历史离线包适配；B4 PPT 未在本次前端开发中制作。A 的 N4 模型实验仍按 TASK_CORE 执行。以下待办保留作为整体 B0–B4 验收清单，不代表应重建已有页面。
-
-### 可直接交给 Codex 的开工指令
-
-> 请先阅读 frontend/README.md 和 docs/FRONTEND_SPEC.md，在已有四类页面、DTO 和只读 API 上继续开发，不重建工程。优先用获准共享的完整实测数据库完成 B3 核对，补充 Evolution 脱敏闭包导出及历史离线包。保留来源标签、未知指标和缺失证据，不触发模型或修改 Gate。PPT 仅在明确分配 B4 时按 PRESENTATION_PLAN 制作。不得接管 TASK_CORE；如需合并，先完成验证再由负责人决定。
-
-## 1. 开工依据与文件边界
-
-先读README、DEVELOPMENT、AGENTS、PROJECT、ARCHITECTURE、ROADMAP及 [前端规范](FRONTEND_SPEC.md)；展示评价/实验内容时读EXPERIMENTS和DECISIONS；逐页设计以 [PRESENTATION_PLAN](PRESENTATION_PLAN.md) 为准。
-
-| B可修改 | B不得接管 |
+| 能力 | 状态与边界 |
 | --- | --- |
-| `frontend/`、`evoteam/presentation/`、`evoteam/api_queries.py`，以及展示测试 | `domain/`、`evolution/`、`orchestration/`、`monitoring/`、`storage/` 的领域/存储实现和统计规则 |
-| `evoteam/api.py`中挂载只读router的最小改动，保持现有POST接口兼容 | 修改现有执行/晋级/回滚业务行为；展示侧不能直接写SQL或触发模型 |
-| PPT、截图、素材来源清单、导出说明和本任务进度 | A的实验数据制作、基线调用、Gate参数校准 |
+| B0 展示契约、样例 | 已有 Zod 校验和展示信封；fixture 始终标为开发样例 |
+| B1 四类证据页 | 已有运行详情、拓扑/实例/历史回放、演进证据、版本/配置差异；桌面/手机截图已交付 |
+| B2 只读 API | 已有六类 GET、Run 脱敏导出，SQLite mode=ro；读取不启动模型 |
+| CLI 与 POST 执行 | 已有 `run`、`POST /v1/runs`；当前 POST 等待执行完成才返回 SealedRun |
+| 网页提交与实时执行 | 尚未实现；当前页面不能提交任务，600ms 回放不是真实时进度 |
+| 运行中查询 | Trace 已逐步写入，但现有事件 GET 先检查 SealedRun，不能直接用于未封存 Run |
+| Tool/Skill | 当前 Agent 执行路径未开放；约束检查器用于评价，不是 Agent 已调用工具的证据 |
+| 真实实验展示 | HTTP 联调用的是独立无模型演示库；完整实测材料仍需来源核对，不把 fixture 当实测 |
+| 后续导出与 PPT | Evolution 闭包下载、历史离线包、PPT 成稿尚未交付 |
 
-前端选型确定为 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix），图形使用 React Flow / Recharts，npm 管理锁定依赖；完整工程、样式、操作及动画约定见 [FRONTEND_SPEC](FRONTEND_SPEC.md)。这些依赖已安装并锁定，具体版本见 frontend/package-lock.json。B负责自己的接口适配与router挂载，负责人不承担集成编码。
+已存在的查询：`GET /v1/runs`、`/v1/runs/{run_id}`、`/v1/runs/{run_id}/events`、`/v1/strategies/{strategy_id}/versions`、`/v1/evolutions`、`/v1/evolutions/{evolution_id}`，另有 `/v1/runs/{run_id}/export`。返回的是脱敏展示投影，不承诺完整原始 Domain JSON。现有接口兼容性必须保留。
 
-## 2. B0：固定展示Schema与样例，立即开始
+## 2. 分工与依赖
 
-现已实现下表六类 GET，并挂载到现有 FastAPI。展示 DTO 采用领域模型的白名单投影；前端的 fixture 与真实 API 共用 Zod 校验和页面。
+```mermaid
+flowchart LR
+    F0[契约与执行边界] --> F1[持久化执行作业]
+    F1 --> F2[状态与增量事件查询]
+    F0 --> F3[任务输入页]
+    F2 --> F4[实时进度与产物]
+    F3 --> F4
+    F4 --> F5[端到端验收]
+    F5 --> E1[观察入口与触发状态]
+    E1 --> E2[离线演进过程展示]
+    R2[A 的数据与规则] --> E2
+    R3[A 的恢复机制] --> E2
+    R4[A 的工具接入] --> T1[工具调用展示]
+```
 
-- [x] 依据已有Pydantic模型起草展示DTO，放入 `evoteam/presentation/models.py`，前端对应类型集中保存；不复制修改核心领域模型。
-- [x] 准备成功、失败、待采样、缺证据四类fixture，覆盖null指标和重复执行实例；开发样例必须持续标记为fixture。
-- [ ] 把消费字段和缺失端口清单交给A，使用下表约定，不要求负责人写接口设计。
-- [ ] 从已提交历史JSON选择可展示的Run/Evolution ID，B检查可用字段，A核对来源；缺少完整快照的图留空。
+F0–F2 包含用户入口必需的应用/存储改动，由当前网页任务执行者完成；不是只做一个输入框，再把后端集成留给别人。改动 `application.py`、`storage/`、`api.py` 前告知 A 文件范围，避免与 R2/R3 并行编辑同一段代码。A 不重复实现网页执行作业；R3 复用其恢复契约，继续处理模型请求不确定性及演进 claim 恢复。
 
-共用展示外层：`schema_version`、`source_kind`、`captured_at`、`code_commit`（未知为null）、`data`、`missing_refs`。来源固定为fixture / recorded_model_run / current_database；来源属于展示元数据，不回写原始SealedRun。
+F3 可在 F0 后基于相同 DTO 开发明确标记的样例；F4 联调等待 F1/F2。E2 等待可用数据/规则和可靠的演进执行边界，T1 等待 R4。工具或演进未就绪不阻塞 F0–F5。
 
-| 已实现的展示 HTTP 接口 | A提供的存储能力 | B的行为要求 |
+## 3. 首轮契约：F0–F5 的共同依据
+
+以下是待实施约定，不是现有端点。F0 固定 Python 与 TypeScript Schema，后续任务消费同一契约。
+
+### 接口
+
+| 待新增接口 | 输入与返回 | 规则 |
 | --- | --- | --- |
-| `GET /v1/runs?strategy_id=&purpose=&limit=&cursor=` | A0 list_runs | data包含items: SealedRun[]、next_cursor，明确用途/范围 |
-| `GET /v1/runs/{run_id}` | get_sealed_run + read_snapshot | 返回Task/Strategy/Run/Evaluation；无快照标缺失，不从索引造计划 |
-| `GET /v1/runs/{run_id}/events` | events_for_run | sequence有序，caused_by可追踪，node与instance分开 |
-| `GET /v1/strategies/{strategy_id}/versions` | A0 list_versions + current | 展示版本及唯一服务指向，不推测状态变化时间 |
-| `GET /v1/evolutions?strategy_id=&limit=&cursor=` | A0 list_records | items与next_cursor，稳定分页 |
-| `GET /v1/evolutions/{evolution_id}` | get_record / proposal / attribution / validation | 读取已有引用闭包；缺失引用列入missing_refs |
+| `POST /v1/executions` | `{request_id, task: Task, strategy_id}` → 202 + ExecutionView | request_id 是前端生成并保持的 UUID；不接收模型密钥、任意数据库路径、候选版本或前端 Gate 参数 |
+| `GET /v1/executions/{execution_id}` | ExecutionView | 有作业但未封存时仍返回状态；不存在返回 404 |
+| `GET /v1/executions/{execution_id}/events?after_sequence=-1&limit=100` | `{items: TraceEventView[], next_after_sequence, terminal}` | sequence 严格递增，返回大于游标的事件；limit 范围 1–100，未产生事件返回空列表 |
+| `POST /v1/executions/{execution_id}/cancel` | ExecutionView | 显式取消请求；重复取消幂等，不能提前伪装为已经取消 |
 
-A0约定的列表返回 `(items_tuple, next_cursor)`；缺失单条记录为KeyError。B将存储返回映射为展示DTO及HTTP状态：资源根ID不存在404，非法过滤/分页参数400或框架422，已存在记录的部分证据缺失返回可读data＋missing_refs。模型版本、时间与成本缺失时显示未知。
+ExecutionView 字段：`execution_id`、`run_id`、`strategy_id`、`status`、`phase`、`created_at`、`started_at`、`finished_at`、`strategy_ref`、`last_sequence`、`sealed_run_id`、`error_code`、`safe_message`、`cancel_requested`。可空字段分别为三项尚未发生的时间（created_at 必有）、strategy_ref、sealed_run_id、错误信息；无事件时 last_sequence=-1。GET 与 POST 都保留 schema_version/source_kind/captured_at/code_commit/missing_refs 的展示信封。
 
-B不重新计算成功率/Gate/子类收益。已支持 N3 提供的逐题配对数据；旧记录只有聚合指标时只显示聚合。只读浏览、刷新、回放不能调用run/evolve；不做手工晋级按钮。
+作业状态固定为 `accepted / running / completed / failed / timed_out / cancelled / interrupted`；它不同于 Domain RunStatus，尤其 interrupted 不得伪造成一个已封存 Run。phase 为 `accepted / executing / evaluating / sealing / terminal`，只根据后端真实阶段变更显示。completed 表示流程完成并封存，评价 success=false 仍可能是 completed；必须分别展示运行状态与评价结果。
 
-## 3. B1–B4 执行要求
-## B1：前端页面与交互，可从现在开始
+### 执行规则
 
-**首版已交付，继续维护。** 严格按 [FRONTEND_SPEC](FRONTEND_SPEC.md) 的四类页面、布局、设计变量和交互规则开发。先交付运行详情和 Trace 代表页面供设计验收，再复用组件完成其余页面；使用静态证据包启动，缺接口不阻塞页面开发。
+1. 接收前验证 Task/PlanningInput、服务端模型配置、数据库布局、当前服务策略与已登记模型绑定；非法内容 422，未就绪 503，未知策略 404。同一个 request_id 与相同规范请求内容返回原作业；不同内容复用该 ID 返回 409。
+2. 原子登记 request_id、请求摘要、Task 输入、execution_id、预分配 run_id 后才返回 202。单机单 worker 首轮最多一个网页作业运行，超额请求返回 409，不建立无限队列。幂等重试先查已有作业，不受“当前忙碌”影响。
+3. 后台执行复用 TaskService、Orchestrator、Evaluator 和封存事务。内部传入预分配 run_id，保留 CLI/原 POST 的默认行为；一次 Run 的实际策略在开始时固定。预检显示的版本可能在提交前后变化，界面以运行开始时的 strategy_ref 为准。
+4. 启动预检与原 POST/CLI 的初始化约束一致；模型登记、Prompt 引用、执行上限不允许前端放宽。一次执行的终态在封存成功后才确认 completed/failed/timed_out/cancelled，基础设施故障单独保存安全错误及缺失封存提示。
+5. 页面轮询超时或断网不是执行失败，不重新 POST。用户可返回已有 execution_id 查询；若创建响应丢失，可用原 request_id 和相同内容重试以取得原作业。明确点击“再次执行”才产生新 request_id。
+6. 用户取消触发现有协作取消和终态留档路径；直到后台确认才显示 cancelled。已经完成返回原终态。浏览器离开不自动取消；服务正常关闭尽量清理并留档。
+7. 进程硬退出后，启动恢复读取持久化作业：已有对应 SealedRun 的作业根据封存事实修复终态，其余遗留 accepted/running 标 interrupted，保留事件与错误。禁止自动重放不确定的付费调用或补造 SealedRun。
+8. 执行进度数据与 SealedRun 分离；不能修改封存模型来容纳“边跑边写”的状态。恢复不会清理用户历史库。新增表走显式备份迁移，GET 不隐式初始化或迁移。
+9. 本轮网页作业服务仅支持一个应用进程。必须在启动说明中标明单 worker；原 CLI、原同步 POST 和独立实验脚本不被网页并发锁覆盖，运行演示时不得向同一服务库并发启动这些写入口。后续统一并发治理属于 R3，不宣称首轮已有全局队列。
+10. 普通自由输入 Task 可执行，但不自动纳入 History；保持既有 DatasetSource 规则。只有已登记、分区合规的证据能参与演进，前端不能通过填写 manifest_ref 伪造来源。
 
-| 页面 | 画面与交互 | 依赖证据 | 验收 |
-| --- | --- | --- | --- |
-| 运行列表与任务详情 | 策略/用途筛选；状态过滤若仅针对当前页必须标明，点击 Run 查看任务、排期、规则错误与用量 | SealedRun + Snapshot | 成功、失败、超时、空列表均可读；cost 未知显示“未提供” |
-| 团队与 Trace | 配置图、实际执行次序、事件列表、点击节点打开输入/输出抽屉 | execution_plan、instances、events | retry 用不同 instance 展示；三角色五次实例不画成五种 Role；多上游来源可追踪 |
-| 演进详情 | Trigger → 证据 → 归因 → Proposal Diff → Validation → Gate | 完整演进证据包 | Candidate 与 Current 标清；Reject、待采样、无候选和缺证据都有页面状态 |
-| 版本与指标 | 正式版本线、候选比较面板、用量和成功/失败概览 | 策略/治理记录、过滤后的指标 | 候选画在比较区域，不画成 Strategy Family；N3 前不展示不存在的逐题置信或子类结论 |
+### 实时读取与展示数据
 
-数据与演进展示均在本轮工作范围。图上区分配置节点、实际实例和业务控制器；颜色不能成为区分状态的唯一方式。先支持桌面演示尺寸与截图，不增加拖拽改策略、手工晋级、账户管理或自动启动模型的按钮。
+首次使用运行期间每 1 秒读取状态/增量事件；页面不可见时暂停轮询，返回可见后立即补读。每路查询最多一个在途请求，读失败退避为 2/4/8 秒，上限 8 秒；清理离开页面的请求。终态后读完剩余事件，再停止轮询并读取已有 Run 详情。终态并不意味着事件分页已经读完。
 
-- [ ] B0 确认最低响应 Schema，准备成功/失败/待采样/缺数据四类 fixture 并标明来源。
-- [ ] 在 `frontend/` 建页面和数据读取适配层，以 fixture 接口开发；保持 API 路径和数据绑定集中管理。按 FRONTEND_SPEC 先交运行详情/Trace 的桌面、窄屏及异常态样稿，后续四页复用同一套组件。
-- [ ] 测试过滤、详情导航、重复实例、null 指标、断网和缺证据状态。
-- [ ] 交付可启动的页面及演示路线截图样张，不把 fixture 截图当真实运行结果。
+读取已持久化事件，按 `(run_id, sequence)` 排序去重；作业 ID 必须映射到自己的 run_id。last_sequence/next_after_sequence 指真实事件游标，不能使用前端计数充当服务端游标。打开/重连/翻页均不调用 Runtime。
 
-## B2：只读查询与脱敏导出
+TraceEventView 延续已有事件身份与因果字段；按事件类型白名单增加可展示的配置、节点状态及已完成产物，不返回 SDK 日志、原始 context、密钥或隐藏推理。节点调用未完成时显示“执行中”；返回后显示结构化产物。现有 SDK 没有文字逐 token 流，不用打字动画制造流式输出。未来 SSE 可替换传输方式，但不能改变事件语义，首轮不同时开发两套传输。
 
-**六类 GET 与 Run 导出已交付，Evolution 导出待补。** 维护 `evoteam/api_queries.py`、`evoteam/presentation/`；新建 `tests/test_api_queries.py`、`tests/test_evidence_export.py`。
+## F0：固定契约与测试样例
 
-- [ ] 根据 B0 契约给现有 get/read 接口加查询包装；新列表查询使用分页和稳定排序，不一次加载全部历史。
-- [ ] 加入 `tests/test_api_queries.py`：404、空列表、用途隔离、分页、部分证据缺失，以及读取不写数据库的断言。
-- [ ] 增加脱敏导出：显式选择 Run / Evolution ID，导出引用闭包；缺少数据库中的 snapshot/trace 时列出 missing_refs。只拥有 SealedRun JSON 不能导出完整执行甘特图。
-- [ ] 对输出字段使用白名单；测试不导出密钥、模型服务连接配置或系统绝对路径。
-- [ ] 保证刷新/打开页面只使用查询接口；测试过程中记录 Runtime 调用次数为零。
+**文件：** 新增 `evoteam/execution/models.py`、`frontend/src/data/executions.ts`；维护 `evoteam/presentation/models.py`；新增 `tests/test_execution_contracts.py`、`frontend/src/data/executions.test.ts`。
 
-**验收：** 页面与导出读取同一套证据；打开、筛选、回放不会触发模型或演进。GET 端点在本任务实现前不能在其他文档中写成已有能力。
+**产物：** 上述 SubmitExecution、ExecutionView、增量事件信封的 Pydantic/Zod Schema；成功、评价失败、超时、取消、中断、缺封存与断线恢复样例。Domain Task/PlanningInput 复用既有模型。
 
-## B3：真实证据联调和截图
+- [ ] 先写状态与输入反例：缺必需约束、非法依赖、错误状态、未知用量、completed 与 success=false 合法。
+- [ ] 运行 `uv run pytest tests/test_execution_contracts.py`，确认接口尚未实现时失败；实现 Schema 后通过。
+- [ ] 用相同 JSON 样例验证 Python/TypeScript 契约，执行 `npm --prefix frontend test -- src/data/executions.test.ts`。
+- [ ] 将契约与本节字段核对后提交；后续任务不得自行改字段名或把 job status 当评价结果。
 
-**主责：B；A提供可共享证据并排查读模型问题，项目负责人只核对。** 依赖 B1/B2；旧库使用 N1 升级，绝不为演示清空库。
+## F1：持久化作业与后台执行
 
-- [ ] 用一份真实记录替换 fixture，逐个核对 ID、策略版本、评价、Token、Gate 理由。
-- [ ] 可优先使用已脱敏的历史 JSON 做列表和 Gate 展示；Trace、排期和节点输入输出必须等待对应完整快照。没有的数据留空。
-- [ ] 录制“任务结果 → Trace → 演进详情 → Gate → 当前版本”60–90 秒路径，并保留离线证据包作为网络异常备份。
-- [ ] 按 [PPT 设计文档](PRESENTATION_PLAN.md) 的 S01–S06 素材清单导出截图，保存版本/来源说明。
+**文件：** 新增 `evoteam/execution/service.py`、`evoteam/execution/store.py`、`evoteam/api_executions.py`；维护 `evoteam/api.py`（lifespan 与 router）、`application.py`（兼容的 run_id 注入）、`storage/sqlite.py` 和 `storage/migrations.py`；新增 `tests/test_execution_service.py`、`tests/test_execution_recovery.py`，扩展迁移测试。
 
-**验收：** 现场不要求临时完成多轮付费验证；可以明确标注为历史回放。演示网络失败时仍能展示经过核对的旧证据。
+**接口职责：** service 提供 `submit(request)`、`get(execution_id)`、`cancel(execution_id)`、`recover()`；store 提供原子幂等登记、状态转换、作业读取和遗留作业枚举。类型来自 F0。后台任务持有强引用，在应用关闭时管理取消与清理，不能依靠一个无持久化状态的 BackgroundTask 就宣称支持恢复。
 
-## B4：PPT 和讲稿，与 B1 并行
+- [ ] 用可阻塞 Fake Runtime 写失败测试：POST 在 Runtime 完成前返回 202；同一 request_id 重试只启动一次；不同请求复用 ID 被拒绝；忙碌返回 409。
+- [ ] 先验证失败，再实现持久化、服务端预检、TaskService 调度和生命周期；不复制一套 Agent 执行器。
+- [ ] 覆盖评价失败、超时、取消、请求断开、正常停机、硬退出恢复、封存已完成但作业未更新等情形；确认不会自动再次调用模型。
+- [ ] 执行 `uv run pytest tests/test_execution_service.py tests/test_execution_recovery.py tests/test_migrations.py tests/test_api.py`。
+- [ ] 记录新库/旧库迁移与恢复命令，提交可独立运行的作业服务；保留旧 POST / CLI 回归通过。
 
-**主责：B。** 负责人审核业务表述、数字和结论，A 核对实现边界。具体每页文案、布局坐标、状态与图片槽位以 [PRESENTATION_PLAN](PRESENTATION_PLAN.md) 为唯一设计源。
+## F2：运行中的状态和增量事件
 
-- [ ] 先完成封面、问题、领域对象、架构、两个闭环、候选和 Gate 的可编辑图形；先不填缺失截图。
-- [ ] 按来源登记表填历史结果页；保留样本数量、日期、未知指标和缺失证据说明。
-- [ ] B3 完成后替换截图占位；N4 有新结果再替换对应数据页，整页更新来源，不混搭历史数字与新版本截图。
-- [ ] B整理讲稿初稿并计时预演，负责人审核并彩排；B 导出 `.pptx`、PDF 和离线演示素材。字幕、截图和版本信息一并检查。
+**文件：** 维护 `evoteam/api_executions.py`、`evoteam/execution/service.py`、`evoteam/presentation/projections.py`；按需为 `storage/protocol.py`、`storage/sqlite.py` 增加只读增量事件端口；新增 `tests/test_execution_events.py`。
 
-**验收：** 每页只有一个明确结论；已有实现、历史实测、机制示例和待实现状态不混淆。没有真实晋级时讲清拒绝路径，不填虚构收益。
+**消费/输出：** 消费 F1 的 execution_id→run_id 映射和既有持久化 Trace；输出 F0 增量事件信封，不以 SealedRun 是否存在判断正在执行的作业是否存在。
 
+- [ ] 先写未封存事件可读、未知作业 404、分页顺序、相同游标重读、跨作业隔离、完成后补读全部尾部事件的失败测试。
+- [ ] 实现状态查询、事件投影和每页最多 100 条的查询；禁止一次拉取全部历史后在前端冒充服务端分页。
+- [ ] 检查节点输出只在实际完成事件或安全产物引用可用后展示；未知用量和缺失输出保持未知。
+- [ ] 执行 `uv run pytest tests/test_execution_events.py tests/test_api_queries.py`，验证读取不增加模型调用或写入历史证据。
+- [ ] 提交接口、字段来源和缺失值说明，交给 F4 消费。
 
-## 4. 耦合关系与等待期间的工作
+## F3：任务输入首页
 
-| 依赖 | 谁生产 | B收到什么才进入联调 | 等待时继续做什么 |
-| --- | --- | --- | --- |
-| 分页/版本查询 | A0 | 可从main读取的端口、签名、错误和排序说明 | fixture适配、页面、PPT文案和原生图 |
-| 旧数据库升级 | A的N1 | 升级命令与通过的测试 | 新临时库/脱敏历史JSON联调，不自行清空或迁移旧库 |
-| 逐任务验证指标 | A的N3 | 新增字段、兼容说明和测试样例 | 展示已存在聚合指标；逐题页面显示待提供 |
-| 真实实验材料 | A的N4 | 可共享记录/ID、原始来源、结论初稿和限制 | 使用标明日期的历史结果；不虚构新实验数字 |
+**文件：** 新增 `frontend/src/pages/start-task.tsx`、`frontend/src/components/task/planning-form.tsx`；维护 `src/main.tsx`、`app/layout.tsx`、`data/executions.ts`、`styles/theme.css`；新增表单行为测试。
 
-B负责完整查询包装和前端适配；A补核心端口；发现不兼容时双方各自修改所维护的代码，负责人只审核。
+**消费/输出：** F0 Task 请求契约；目标文本、工作项、人员/技能、依赖、期限、预算构成 `project-planning-input@1`。第一版不增加 LLM 自然语言解析调用。
 
-无需等待N4才交付PPT。先交“结构/架构页完整＋截图/新结果空槽”的可编辑稿；已有历史Reject记录可以合法展示，但必须使用历史标签。等真实证据就绪再交成稿。没有证据不能用动画把示意伪装成实测。
+- [ ] 先写必填字段、添加/删除人员与工作项、依赖引用、整数小时/费用单位、加载样例和输入错误定位测试。
+- [ ] 实现 `/start`；全部 F5 验收后才将 `/` 默认入口从 `/runs` 切到 `/start`。导航同时保留“开始任务”和“证据工作台”。
+- [ ] “开始执行”是唯一任务写入口：校验后生成并保留 request_id；禁用连点；创建失败保留输入，网络结果不确定时沿用原 ID 重试。
+- [ ] 模型/策略未准备好时解释配置问题；不向用户展示凭据输入框或允许任意 Candidate 服务任务。
+- [ ] 执行 `npm --prefix frontend test -- src/components/task` 及 typecheck；等待 F1 时使用明确的 fixture，不把模拟提交展示成真实运行。
 
-## 5. PPT交付与负责人验收
+## F4：真实进度与结果
 
-- B写每页讲稿初稿、整理素材、录制演示，负责人检查叙事与结论并主讲，不要求负责人从空白制作。
-- 第一交付：按PRESENTATION_PLAN完成14页主稿＋4页备份的可编辑布局、文字和图；缺截图保持编号槽位。
-- 第二交付：真实可用截图、来源清单、60–90秒演示或静态备份、可编辑PPT与PDF。时间/官方模板调整由负责人确认，B执行修改。
-- 若两线进度不同，先交已有证据的阶段演示，不宣称完整项目验收。
+**文件：** 新增 `frontend/src/pages/execution.tsx`、`src/data/use-execution.ts`、`src/components/task/execution-progress.tsx`；复用已有产物表格、节点、状态和来源组件；新增 `src/data/use-execution.test.tsx`。
 
-## 6. 验证与停止边界
+**消费/输出：** F1/F2 的执行状态和事件；`/executions/:executionId` 是可恢复深链接，完成后跳转对应 `/runs/:runId`，不能猜测最近一条 Run。
 
-- [ ] 读取/过滤/空数据/断网/缺引用/null指标/重复实例测试通过；读取不得有数据库写入或模型调用。
-- [ ] B0–B4交付完整，A尚未交付部分精确列为依赖，不替A标记完成。
-- [ ] 截图中的每个数字有来源，PPT字体/溢出/图形位置经过逐页检查，PDF和离线演示可打开。
-- [ ] 自己的API router已接入且原POST契约测试仍通过，不留下“负责人再写一行才能跑”的事项。
+- [ ] 使用 fake timers 和模拟 API 先测试增量合并、去重、断网退避、隐藏页面暂停、终态尾页补读、取消请求和卸载清理。
+- [ ] 按 FRONTEND_SPEC 的“左产物、右进度”布局展示 Planner/Executor/Critic、独立评价与封存；实际启用 Verifier 才显示它。
+- [ ] 显示实际策略版本、执行时长、已提供的用量、已完成产物、错误和明确终态；无依据不显示完成百分比或预计费用。
+- [ ] 用户取消显示“正在取消”，后端确认后才显示取消；普通刷新不发 POST，不取消后台任务；“再次执行”明确创建新任务。
+- [ ] 完成后提供“查看完整证据”“新建任务”；状态与评价独立。工具区未接入时显示能力说明，不能把评价器当工具调用。
+- [ ] 执行 `npm --prefix frontend test -- src/data/use-execution.test.tsx`，提交可联调的完整用户流程。
 
-执行Python检查：`uv sync`、`uv run pytest`、`uv run ruff check .`、`uv run ruff format --check .`、`uv run pyright`；前端开工后在其README记录实际安装/构建/测试命令并运行。不要把尚未建好的前端命令宣称通过。
+## F5：联调、无模型验收与使用说明
 
-前端的布局、每区内容、动画、按钮行为及异常状态只维护在 FRONTEND_SPEC，本任务书维护交付进度，不另起平行设计稿。
+**文件：** 扩展 `frontend/e2e/serve_api.py`、`e2e/api.spec.ts`；新增 `e2e/execution.spec.ts`；维护 `frontend/README.md`、DEVELOPMENT、本文和 FRONTEND_SPEC。
 
-每次按AGENTS汇报，另列“依赖A的交付”“当前采用的数据来源”“尚未填充的素材槽位”。只交付本任务，其他功能不自动开工。
+- [ ] 用可控 Fake Runtime 和独立临时数据库完成“输入 → 202 → 真实后台阶段 → 封存 → 工作台”浏览器测试；不能只测预置前端定时器。
+- [ ] 覆盖连点、创建响应丢失、刷新/回退、两个标签页、请求中断、失败、超时、取消、服务重启与缺封存；确认每个用户 request_id 最多创建一个 Run。
+- [ ] 核对 1440px 与 390px，键盘可操作、抽屉焦点、reduced-motion、来源标记和错误提示；提交截图与说明。
+- [ ] 执行 `uv sync`、`uv run pytest`、`uv run ruff check .`、`uv run ruff format --check .`、`uv run pyright`；执行前端 build/typecheck/lint/test/test:e2e。
+- [ ] 写明 API 启动、单 worker、数据库准备、模型配置、网页执行和 CLI 备用命令；同时保留只读工作台入口。
+- [ ] 单次真实模型验收另行使用已授权的配置与预算；未执行时明确标“无模型端到端已通过，真实模型验收未执行”，不阻塞提交已验证代码。
 
-团队成果统一纳入main后再通知组员读取；任务分支仅供开发隔离，不能作为长期成果入口。PPT完整内容仍只维护PRESENTATION_PLAN，不新建互相冲突的设计版本。
+## 4. 后续任务，不纳入 F0–F5
+
+| 编号 | 工作内容 | 前提与验收 |
+| --- | --- | --- |
+| E1 | 执行结束后提供独立“检查演进信号”入口，展示未检查/未触发/证据不足/已有 Trigger | 复用 observe，读取已登记的服务端 Policy；默认不自动生成候选，不把一次任务失败视为必然触发 |
+| E2 | 显式启动离线演进，展示归因、候选、配对验证、Gate 与实际服务版本变更 | A 的合规 History/Validation、已确认规则/预算与 R3 恢复机制；演进有独立 execution_id 和调用上限，不能复用在线任务页面的模型预算；复用 Manager，不绕过 Gate |
+| T1 | 展示真实 Tool 调用、参数摘要、结果、耗时及对产物的证据引用 | A 的 R4 登记能力和真实 Tool 事件；必须与 Evaluator 检查区别展示，结果不足不能推出“工具提升效果” |
+| D1 | Evolution 脱敏引用闭包导出、历史离线包读取与真实素材核对 | 同一展示 DTO、白名单、来源清单、缺引用标记；不混用 fixture/历史/当前库，不依赖现场反复付费调用 |
+| P1 | PPT 成稿、截图与讲稿 | 按 PRESENTATION_PLAN 的 14+4 页；先骨架后真实素材，缺证据留空，未实测晋级不填写虚构收益 |
+
+E1/E2 的详细接口在轮到该任务时基于届时核心实现补入本文件。当前不能把这两项标记为已支持，也不能在 F0–F5 里顺便添加“每次任务自动演进”。工具接入、评价改革和演进算法仍由 TASK_CORE 排期，不复制到网页代码。
+
+## 5. 交付状态
+
+- [ ] F0 契约与共同样例
+- [ ] F1 持久化后台执行与取消/中断边界
+- [ ] F2 运行中状态与增量事件
+- [ ] F3 任务输入首页
+- [ ] F4 真实进度与结果
+- [ ] F5 端到端验收与说明
+- [ ] E1/E2 演进操作与进度
+- [ ] T1 工具调用展示
+- [ ] D1 完整实测素材与离线证据
+- [ ] P1 PPT 成稿
+
+本次提交只整理上述开发计划，保留已完成工作台；未实现任务保持未勾选。后续任务按现有分支/PR 流程验收后统一进入 main，团队以 main 为唯一阅读入口。

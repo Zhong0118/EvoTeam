@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvoTeam：让团队策略随证据改进</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           THEME — Paper & Ink
+           Warm cream, charcoal, crimson rule.
+           Academic report, not product dashboard.
+           =========================================== */
+        :root {
+            --stage-bg: #2a2420;
+            --slide-bg: #faf9f7;
+            --paper: #faf9f7;
+            --ink: #1a1a1a;
+            --muted: #555555;
+            --rule: #c41e3a;
+            --line: rgba(26, 26, 26, 0.16);
+            --soft: #f3f1ec;
+            --font-display: "Cormorant Garamond", "Noto Serif SC", serif;
+            --font-body: "Source Serif 4", "Noto Serif SC", serif;
+            --font-cjk: "Noto Serif SC", "Source Serif 4", serif;
+            --font-sans: "Noto Sans SC", "Source Serif 4", sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.55s;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           FIXED 16:9 STAGE (viewport-base.css, full)
+           =========================================== */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg, #fff);
+        }
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+        img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+        @media print {
+            html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+            .deck-viewport { position: static; overflow: visible; background: #fff; }
+            .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+            }
+            .slide:last-child { break-after: auto; page-break-after: auto; }
+            .deck-controls { display: none !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           CHROME OUTSIDE THE STAGE
+           =========================================== */
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: rgba(26, 26, 26, 0.9);
+            color: #faf9f7;
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+        .deck-controls button {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+            padding: 4px 8px;
+        }
+        .edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 10000;
+            cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 8px;
+            background: #1a1a1a;
+            color: #faf9f7;
+            font-size: 18px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            cursor: pointer;
+        }
+        .edit-toggle.show,
+        .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        body.editing [contenteditable="true"] { outline: 1px dashed var(--rule); }
+
+        /* ===========================================
+           SHARED PAGE CHROME — large title every content slide
+           =========================================== */
+        body, .slide {
+            font-family: var(--font-body);
+            color: var(--ink);
+            background: var(--paper);
+        }
+        .margin-rule {
+            position: absolute;
+            left: 88px;
+            top: 56px;
+            bottom: 56px;
+            width: 1px;
+            background: var(--line);
+        }
+        .running {
+            position: absolute;
+            left: 128px;
+            top: 48px;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .source-tag {
+            position: absolute;
+            right: 96px;
+            top: 42px;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            color: var(--rule);
+            border-bottom: 1px solid var(--rule);
+            padding: 6px 0;
+        }
+        .page-title {
+            position: absolute;
+            left: 128px;
+            top: 88px;
+            width: 1690px;
+            font-family: var(--font-display);
+            font-size: 56px;
+            font-weight: 600;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+        }
+        .title-rule {
+            position: absolute;
+            left: 128px;
+            top: 178px;
+            width: 120px;
+            height: 3px;
+            background: var(--rule);
+        }
+        .footer-src {
+            position: absolute;
+            left: 128px;
+            bottom: 48px;
+            width: 1540px;
+            font-size: 16px;
+            color: var(--muted);
+        }
+        .page-no {
+            position: absolute;
+            right: 96px;
+            bottom: 48px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--muted);
+        }
+        .callout {
+            position: absolute;
+            left: 128px;
+            bottom: 102px;
+            width: 1690px;
+            border-left: 3px solid var(--rule);
+            padding: 8px 0 8px 22px;
+            font-family: var(--font-display);
+            font-size: 30px;
+            font-style: italic;
+            line-height: 1.35;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid var(--line);
+        }
+        .kicker {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--rule);
+            margin-bottom: 12px;
+        }
+        .placeholder {
+            background: repeating-linear-gradient(-45deg, #f3f1ec, #f3f1ec 10px, #ece9e2 10px, #ece9e2 20px);
+            border: 1px dashed rgba(26, 26, 26, 0.28);
+            color: var(--muted);
+            padding: 28px;
+        }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            padding: 2px 8px;
+            border: 1px solid var(--ink);
+        }
+        .badge.fail { border-color: var(--rule); color: var(--rule); }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: none; }
+        .slide.visible .d1 { transition-delay: 0.08s; }
+        .slide.visible .d2 { transition-delay: 0.16s; }
+        .slide.visible .d3 { transition-delay: 0.24s; }
+        .slide.visible .d4 { transition-delay: 0.32s; }
+        .slide.visible .d5 { transition-delay: 0.40s; }
+
+        /* ===========================================
+           01 COVER
+           =========================================== */
+        .cover-drop {
+            position: absolute;
+            left: 128px;
+            top: 150px;
+            font-family: var(--font-display);
+            font-size: 92px;
+            line-height: 0.8;
+            color: var(--rule);
+            font-style: italic;
+        }
+        .cover-h1 {
+            position: absolute;
+            left: 220px;
+            top: 210px;
+            font-family: var(--font-display);
+            font-size: 152px;
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            line-height: 0.92;
+        }
+        .cover-sub {
+            position: absolute;
+            left: 220px;
+            top: 400px;
+            width: 980px;
+            font-family: var(--font-display);
+            font-size: 48px;
+            font-style: italic;
+            font-weight: 500;
+        }
+        .cover-lede {
+            position: absolute;
+            left: 220px;
+            top: 490px;
+            width: 900px;
+            font-size: 26px;
+            line-height: 1.55;
+            color: var(--muted);
+        }
+        .cover-rule {
+            position: absolute;
+            left: 220px;
+            top: 680px;
+            width: 160px;
+            height: 3px;
+            background: var(--rule);
+        }
+        .cover-meta {
+            position: absolute;
+            left: 220px;
+            top: 720px;
+            font-size: 22px;
+        }
+        .cover-aside {
+            position: absolute;
+            right: 110px;
+            top: 230px;
+            width: 430px;
+            border: 1px solid var(--ink);
+            background: #fff;
+            padding: 32px 28px;
+        }
+
+        /* ===========================================
+           02 TOC — three chapters, not a slide index
+           =========================================== */
+        .chapters {
+            position: absolute;
+            left: 128px;
+            top: 230px;
+            width: 1690px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 56px;
+        }
+        .chapter {
+            cursor: pointer;
+            border: 0;
+            background: transparent;
+            text-align: left;
+            color: inherit;
+            padding: 0;
+            font: inherit;
+        }
+        .chapter .num {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-size: 72px;
+            line-height: 1;
+            color: var(--rule);
+        }
+        .chapter h3 {
+            font-family: var(--font-display);
+            font-size: 52px;
+            font-weight: 600;
+            margin: 10px 0 18px;
+        }
+        .chapter p {
+            font-size: 22px;
+            line-height: 1.5;
+            color: var(--muted);
+            min-height: 132px;
+        }
+        .chapter .pages {
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px solid var(--ink);
+            font-family: var(--font-mono);
+            font-size: 16px;
+            letter-spacing: 0.08em;
+        }
+        .chapter:hover h3 { color: var(--rule); }
+        .toc-spine {
+            position: absolute;
+            left: 128px;
+            bottom: 110px;
+            width: 1690px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 22px;
+        }
+        .toc-spine .arr { color: var(--rule); font-size: 28px; }
+
+        /* ===========================================
+           PIPELINES WITH ARROWS
+           =========================================== */
+        .pipe {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+        }
+        .pipe .node {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            border: 1px solid var(--ink);
+            background: #fff;
+            padding: 16px 10px;
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .pipe .node small {
+            display: block;
+            margin-top: 6px;
+            font-weight: 400;
+            font-size: 16px;
+            color: var(--muted);
+        }
+        .pipe .arr {
+            flex: 0 0 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: var(--rule);
+            font-family: var(--font-display);
+        }
+        .pipe.dashed .node { border-style: dashed; color: var(--muted); }
+        .pipe-block {
+            position: absolute;
+            left: 128px;
+            width: 1690px;
+        }
+        .pipe-lab {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--rule);
+            margin-bottom: 10px;
+        }
+
+        /* ===========================================
+           CONTENT GRIDS
+           =========================================== */
+        .two-col {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 560px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+        }
+        .col {
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+        }
+        .flow { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 auto; }
+        .flow span {
+            border: 1px solid var(--ink);
+            padding: 8px 12px;
+            font-size: 20px;
+            background: var(--soft);
+        }
+        .scene {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 560px;
+            display: grid;
+            grid-template-columns: 360px 1fr 320px;
+            gap: 28px;
+        }
+        .scene .list div {
+            border-bottom: 1px solid var(--line);
+            padding: 14px 4px;
+            font-size: 24px;
+        }
+        .gantt { padding: 28px; }
+        .bar-track { height: 28px; background: var(--soft); position: relative; margin: 8px 0 22px; }
+        .bar { position: absolute; top: 0; height: 28px; background: var(--ink); color: #faf9f7; font-size: 15px; display: flex; align-items: center; padding: 0 10px; }
+        .checks div { border: 1px solid var(--line); padding: 16px; margin-bottom: 10px; font-size: 22px; background: #fff; }
+
+        .obj-main {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1040px;
+            height: 560px;
+            padding: 32px;
+        }
+        .obj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: calc(100% - 50px); }
+        .obj-grid div { background: var(--soft); border: 1px solid var(--line); padding: 24px; font-family: var(--font-display); font-size: 28px; }
+        .obj-side {
+            position: absolute;
+            right: 96px;
+            top: 214px;
+            width: 500px;
+            height: 560px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .obj-side .panel { flex: 1; padding: 24px; }
+        .roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .roles span { border: 1px solid var(--line); padding: 6px 10px; font-size: 16px; color: var(--muted); }
+        .roles span.on { border-color: var(--ink); color: var(--ink); background: var(--soft); }
+
+        .chain {
+            position: absolute;
+            left: 128px;
+            width: 1690px;
+            display: flex;
+            gap: 8px;
+        }
+        .chain.online { top: 220px; }
+        .chain.offline { top: 400px; }
+        .chip {
+            flex: 1;
+            text-align: center;
+            padding: 22px 8px;
+            border: 1px solid var(--ink);
+            font-size: 20px;
+            font-weight: 600;
+            background: #fff;
+        }
+        .chip.ghost { border-style: dashed; color: var(--muted); }
+        .sdk {
+            position: absolute;
+            left: 128px;
+            top: 620px;
+            width: 1040px;
+            display: flex;
+            gap: 8px;
+        }
+        .bound {
+            position: absolute;
+            right: 96px;
+            top: 620px;
+            width: 500px;
+            padding: 18px 22px;
+            font-size: 22px;
+            line-height: 1.4;
+        }
+
+        .shot {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1120px;
+            height: 560px;
+        }
+        .caps {
+            position: absolute;
+            right: 96px;
+            top: 214px;
+            width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .caps .panel { padding: 28px; font-family: var(--font-display); font-size: 28px; }
+
+        .obs {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 560px;
+            display: grid;
+            grid-template-columns: 1fr 360px 360px;
+            gap: 24px;
+        }
+        .files { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 20px; }
+        .files div { border: 1px solid var(--line); padding: 14px; min-height: 110px; font-size: 16px; background: #fff; }
+
+        .attr {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 560px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+        }
+        .path { margin: 16px 0; }
+        .path div { border-bottom: 1px solid var(--line); padding: 12px 0; font-size: 22px; }
+
+        .cands {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 560px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+        }
+        .cands .panel { padding: 28px; }
+        .mono { font-family: var(--font-mono); font-size: 16px; background: var(--soft); padding: 12px; }
+
+        .gate {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 530px;
+            display: grid;
+            grid-template-columns: 520px 1fr 320px;
+            gap: 24px;
+        }
+        .iso { border: 1px solid var(--line); padding: 16px; margin-bottom: 12px; background: #fff; }
+        .rule-item { border-bottom: 1px solid var(--line); padding: 16px 0; font-size: 24px; }
+        .state { border: 1px solid var(--ink); text-align: center; padding: 16px; margin-bottom: 12px; font-weight: 700; }
+
+        .demo-main {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1180px;
+            height: 560px;
+        }
+        .steps {
+            position: absolute;
+            right: 96px;
+            top: 214px;
+            width: 460px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .steps div { padding: 22px; font-size: 24px; background: #fff; border: 1px solid var(--line); }
+
+        .result {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 530px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 20px; }
+        th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        th { font-size: 15px; color: var(--muted); font-weight: 600; }
+
+        .prog {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 530px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+        }
+        .prog .panel { padding: 28px; }
+        .prog li { margin: 12px 0; font-size: 22px; }
+
+        .next {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+        }
+        .next .panel { padding: 36px; min-height: 280px; }
+        .close-line {
+            position: absolute;
+            left: 128px;
+            top: 640px;
+            width: 1400px;
+            font-family: var(--font-display);
+            font-size: 34px;
+            font-style: italic;
+        }
+        .qa {
+            position: absolute;
+            right: 96px;
+            bottom: 110px;
+            font-family: var(--font-display);
+            font-size: 48px;
+            color: var(--rule);
+            font-style: italic;
+        }
+
+        .life-top { position: absolute; left: 128px; top: 214px; width: 1690px; padding: 24px; }
+        .life-bot {
+            position: absolute;
+            left: 128px;
+            top: 520px;
+            width: 1690px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        .exp {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 620px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+        .eng {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            height: 620px;
+            display: grid;
+            grid-template-columns: 520px 1fr;
+            gap: 24px;
+        }
+        .faq {
+            position: absolute;
+            left: 128px;
+            top: 214px;
+            width: 1690px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .faq .panel { padding: 20px 26px; }
+    </style>
+</head>
+<body>
+    <div class="edit-hotzone" aria-hidden="true"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✎</button>
+
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- 01 COVER -->
+            <section class="slide" data-slide="01">
+                <div class="margin-rule"></div>
+                <div class="running reveal d1">EvoTeam · 项目汇报</div>
+                <div class="source-tag reveal d1">项目定位</div>
+                <div class="cover-drop reveal d1">E</div>
+                <h1 class="cover-h1 reveal d2">EvoTeam</h1>
+                <p class="cover-sub reveal d3">让团队策略随证据改进</p>
+                <p class="cover-lede reveal d4">基于 openJiuwen 的经验驱动多智能体组织演进系统。模型执行任务；EvoTeam 管理配置、证据、比较和版本决定。</p>
+                <div class="cover-rule reveal d4"></div>
+                <p class="cover-meta reveal d5">[团队/单位]　[主讲人]　[汇报日期]</p>
+                <aside class="cover-aside reveal d3">
+                    <div class="kicker">当前服务链</div>
+                    <p style="font-size:24px;line-height:1.7;margin-bottom:18px;">Planner → Executor → Critic</p>
+                    <p style="font-size:22px;line-height:1.5;">候选经 Gate 后，才可能改写后续任务的默认组织。</p>
+                    <p style="margin-top:16px;font-size:16px;color:var(--muted);font-style:italic;">机制示意 · 非正式晋级</p>
+                </aside>
+                <div class="page-no">01 / 19</div>
+            </section>
+
+            <!-- 02 TOC -->
+            <section class="slide" data-slide="02">
+                <div class="margin-rule"></div>
+                <div class="running">EvoTeam · 项目汇报</div>
+                <div class="source-tag">目录</div>
+                <h2 class="page-title">汇报分三块讲</h2>
+                <div class="title-rule"></div>
+                <nav class="chapters">
+                    <button type="button" class="chapter reveal d1" data-go="2">
+                        <div class="num">I</div>
+                        <h3>背景</h3>
+                        <p>单次返工不会自动让下一次更好。我们从可校验的项目计划出发，问的是组织策略能否随证据改变。</p>
+                        <div class="pages">03 — 05</div>
+                    </button>
+                    <button type="button" class="chapter reveal d2" data-go="5">
+                        <div class="num">II</div>
+                        <h3>方案</h3>
+                        <p>在线执行与离线演进分开。证据重复才触发，归因后生成受约束候选，由 Gate 决定是否上线。</p>
+                        <div class="pages">06 — 11</div>
+                    </button>
+                    <button type="button" class="chapter reveal d3" data-go="11">
+                        <div class="num">III</div>
+                        <h3>效果</h3>
+                        <p>机制已跑通：任务能执行、候选能比较、不合格会被拒绝。稳定收益仍待可信实验。</p>
+                        <div class="pages">12 — 15</div>
+                    </button>
+                </nav>
+                <div class="toc-spine reveal d4">
+                    <span>为何要改组织</span>
+                    <span class="arr">→</span>
+                    <span>怎样受约束地改</span>
+                    <span class="arr">→</span>
+                    <span>现在实际做到哪里</span>
+                </div>
+                <p class="footer-src">备份页回答生命周期、实验设计和工程边界，默认不播放。</p>
+                <div class="page-no">02 / 19</div>
+            </section>
+
+            <!-- 03 PROBLEM -->
+            <section class="slide" data-slide="03" id="s03">
+                <div class="margin-rule"></div>
+                <div class="running">I 背景 · 问题</div>
+                <div class="source-tag">机制示意</div>
+                <h2 class="page-title">单次返工之后，下一次任务会变好吗？</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">任务内补救 · 策略可以不变</div>
+                    <div class="pipe">
+                        <div class="node">Task A</div>
+                        <div class="arr">→</div>
+                        <div class="node">执行</div>
+                        <div class="arr">→</div>
+                        <div class="node">返工</div>
+                        <div class="arr">→</div>
+                        <div class="node">本次输出</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:460px;">
+                    <div class="pipe-lab">跨任务演进 · 才影响未来任务</div>
+                    <div class="pipe dashed">
+                        <div class="node">历史证据</div>
+                        <div class="arr">→</div>
+                        <div class="node">候选</div>
+                        <div class="arr">→</div>
+                        <div class="node">验证</div>
+                        <div class="arr">→</div>
+                        <div class="node">新版本</div>
+                        <div class="arr">→</div>
+                        <div class="node">Task B</div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">EvoTeam 要验证：改变组织策略是否带来可重复的收益。</p>
+                <p class="footer-src">Retry 有价值，但是对照基线。组织变更本身也不保证收益。</p>
+                <div class="page-no">03 / 19</div>
+            </section>
+
+            <!-- 04 MAIN TASK -->
+            <section class="slide" data-slide="04" id="s04">
+                <div class="margin-rule"></div>
+                <div class="running">I 背景 · 主场景</div>
+                <div class="source-tag">机制示意</div>
+                <h2 class="page-title">从可校验的项目计划开始</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">输入 → 计划 → 规则检查</div>
+                    <div class="pipe">
+                        <div class="node">约束输入<small>工作项 · 依赖 · 技能 · 时间 · 期限 · 预算</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">示例排期<small>Alice design [0,2) → build [2,6)</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">独立检查<small>完整 · 冲突 · 依赖 · 工期 · 预算</small></div>
+                    </div>
+                </div>
+                <p class="reveal d3" style="position:absolute;left:128px;top:520px;width:1690px;font-size:22px;color:var(--muted);">示例：费率 100 分/时，人工 600 分，预算 800 分。相邻区间不重叠。这是机制示意，不是新实验结果。</p>
+                <p class="callout reveal d4">计划是否满足硬约束，可以由独立规则检查器复核。</p>
+                <p class="footer-src">来源：examples/project_planning/task.json、plan.json</p>
+                <div class="page-no">04 / 19</div>
+            </section>
+
+            <!-- 05 STRATEGY -->
+            <section class="slide" data-slide="05" id="s05">
+                <div class="margin-rule"></div>
+                <div class="running">I 背景 · 核心对象</div>
+                <div class="source-tag">已实现＋设计边界</div>
+                <h2 class="page-title">我们演进的是 Strategy</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">稳定配置 · 可版本化</div>
+                    <div class="pipe">
+                        <div class="node">AgentConfig</div>
+                        <div class="arr">+</div>
+                        <div class="node">Topology</div>
+                        <div class="arr">+</div>
+                        <div class="node">OrchestrationPolicy</div>
+                        <div class="arr">→</div>
+                        <div class="node">Strategy 版本</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:460px;">
+                    <div class="pipe-lab">一次任务里 · 不改写 Role</div>
+                    <div class="pipe">
+                        <div class="node">固定 Role<small>P / E / C 启用，Verifier 可候选</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">AgentInstance<small>本次运行状态</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Team<small>本次实例与协作</small></div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">Role 固定；配置可版本化；运行状态按 Run 隔离。</p>
+                <p class="footer-src">同一角色可以有不同配置。返工增加实例次数，不等于发现新角色。</p>
+                <div class="page-no">05 / 19</div>
+            </section>
+
+            <!-- 06 TWO LOOPS -->
+            <section class="slide" data-slide="06" id="s06">
+                <div class="margin-rule"></div>
+                <div class="running">II 方案 · 架构</div>
+                <div class="source-tag">已实现 / 部分能力继续完善</div>
+                <h2 class="page-title">在线执行与离线演进分开运行</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:214px;">
+                    <div class="pipe-lab">在线</div>
+                    <div class="pipe">
+                        <div class="node">Task</div>
+                        <div class="arr">→</div>
+                        <div class="node">Current</div>
+                        <div class="arr">→</div>
+                        <div class="node">Orchestrator</div>
+                        <div class="arr">→</div>
+                        <div class="node">Team</div>
+                        <div class="arr">→</div>
+                        <div class="node">Evaluator</div>
+                        <div class="arr">→</div>
+                        <div class="node">SealedRun</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:400px;">
+                    <div class="pipe-lab">离线</div>
+                    <div class="pipe dashed">
+                        <div class="node">Experience / Monitor</div>
+                        <div class="arr">→</div>
+                        <div class="node">Trigger</div>
+                        <div class="arr">→</div>
+                        <div class="node">归因 / 修改</div>
+                        <div class="arr">→</div>
+                        <div class="node">Validator</div>
+                        <div class="arr">→</div>
+                        <div class="node">Gate</div>
+                        <div class="arr">→</div>
+                        <div class="node">版本决定</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d3" style="top:590px;">
+                    <div class="pipe-lab">运行边界</div>
+                    <div class="pipe">
+                        <div class="node">Domain</div>
+                        <div class="arr">→</div>
+                        <div class="node">RuntimeProtocol</div>
+                        <div class="arr">→</div>
+                        <div class="node">OpenJiuwen Adapter</div>
+                        <div class="arr">→</div>
+                        <div class="node">openJiuwen</div>
+                    </div>
+                </div>
+                <p class="footer-src">来源：ARCHITECTURE §5 / §7 / §9、composition.py。六层是职责划分，不是六个微服务。</p>
+                <div class="page-no">06 / 19</div>
+            </section>
+
+            <!-- 07 CAPABILITY -->
+            <section class="slide" data-slide="07" id="s07">
+                <div class="margin-rule"></div>
+                <div class="running">II 方案 · 在线能力</div>
+                <div class="source-tag">待补截图；已有代码</div>
+                <h2 class="page-title">已有能力：任务执行、校验与封存</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">一次正式任务已经能走完</div>
+                    <div class="pipe">
+                        <div class="node">三角色起点<small>Planner → Executor → Critic</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">独立规则检查<small>硬约束不靠模型自评</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">封存留档<small>失败 / 超时 / 取消都留下</small></div>
+                    </div>
+                </div>
+                <div class="placeholder reveal d2" style="position:absolute;left:128px;top:470px;width:1690px;height:250px;">
+                    <div class="kicker">S01 · 待补证据</div>
+                    <p style="font-size:28px;font-family:var(--font-display);color:var(--ink);">待补运行详情截图：Run ID、Strategy、规则评价、Token、状态。无前端时可用 CLI 节选。</p>
+                </div>
+                <p class="footer-src">[Run ID] / [代码提交或历史批次] / [数据来源]</p>
+                <div class="page-no">07 / 19</div>
+            </section>
+
+            <!-- 08 MONITOR -->
+            <section class="slide" data-slide="08" id="s08">
+                <div class="margin-rule"></div>
+                <div class="running">II 方案 · 长期观察</div>
+                <div class="source-tag">机制示意</div>
+                <h2 class="page-title">有重复证据，才考虑改变</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:250px;">
+                    <div class="pipe-lab">跨 Run 观察</div>
+                    <div class="pipe">
+                        <div class="node">多次 Run<small>成功与同码失败并存</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Experience<small>支持样本 · 反例 · 范围</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Monitor<small>样本量与冷却约束</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">继续观察<small>或产生 Trigger</small></div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">按策略版本、任务范围和评价协议观察；样本量与冷却由 Policy 约束。</p>
+                <p class="footer-src">当前只启用 repeated_failure。阈值 1 是诊断配置，不是校准后的正式触发能力。</p>
+                <div class="page-no">08 / 19</div>
+            </section>
+
+            <!-- 09 ATTRIBUTION -->
+            <section class="slide" data-slide="09" id="s09">
+                <div class="margin-rule"></div>
+                <div class="running">II 方案 · 归因</div>
+                <div class="source-tag">机制示意，规则已实现</div>
+                <h2 class="page-title">区分错误产生与实际漏检</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">漏检：产物错了，审查也放过</div>
+                    <div class="pipe">
+                        <div class="node">Executor 冲突计划</div>
+                        <div class="arr">→</div>
+                        <div class="node">Critic「通过」</div>
+                        <div class="arr">→</div>
+                        <div class="node">独立检查发现错误</div>
+                        <div class="arr">→</div>
+                        <div class="node">Origin + Control</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:460px;">
+                    <div class="pipe-lab">已指出：审查拦住了，不另算漏检</div>
+                    <div class="pipe dashed">
+                        <div class="node">Executor 错误计划</div>
+                        <div class="arr">→</div>
+                        <div class="node">Critic「指出错误」</div>
+                        <div class="arr">→</div>
+                        <div class="node">独立检查仍失败</div>
+                        <div class="arr">→</div>
+                        <div class="node">不认定漏检</div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">归因读取最终产物与实际审查；证据不足保留不确定性。</p>
+                <p class="footer-src">来源：attribution.py、test_attribution_review.py。旧 confidence=0.8 不作为当前正确归因。</p>
+                <div class="page-no">09 / 19</div>
+            </section>
+
+            <!-- 10 CANDIDATES -->
+            <section class="slide" data-slide="10" id="s10">
+                <div class="margin-rule"></div>
+                <div class="running">II 方案 · 候选比较</div>
+                <div class="source-tag">分块标注</div>
+                <h2 class="page-title">同一个问题，比较受约束候选</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">已实现 · Prompt</div>
+                    <div class="pipe">
+                        <div class="node">问题证据</div>
+                        <div class="arr">→</div>
+                        <div class="node">更新 Prompt 引用<small>executor@v0 → v1-resource-check</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">隔离候选</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:400px;">
+                    <div class="pipe-lab">已实现 · 新增 Verifier</div>
+                    <div class="pipe">
+                        <div class="node">Executor</div>
+                        <div class="arr">→</div>
+                        <div class="node">Verifier</div>
+                        <div class="arr">→</div>
+                        <div class="node">Critic</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d3" style="top:570px;">
+                    <div class="pipe-lab">后续 · Tool Policy，尚未实现</div>
+                    <div class="pipe dashed">
+                        <div class="node">既有 constraint_checker</div>
+                        <div class="arr">→</div>
+                        <div class="node">受控使用规则</div>
+                        <div class="arr">→</div>
+                        <div class="node">不新增工具、不扩大权限</div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">候选来自证据；同一问题的改法需要比较，不能预设增加 Agent 最好。</p>
+                <p class="footer-src">当前运行 Tool 调用为零。结构候选是有限形状，不支持任意拓扑或自动创造 Role。</p>
+                <div class="page-no">10 / 19</div>
+            </section>
+
+            <!-- 11 GATE -->
+            <section class="slide" data-slide="11" id="s11">
+                <div class="margin-rule"></div>
+                <div class="running">II 方案 · 验证与 Gate</div>
+                <div class="source-tag">基本规则已实现，统计验收待补</div>
+                <h2 class="page-title">Gate 决定是否值得上线</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:220px;">
+                    <div class="pipe-lab">数据隔离</div>
+                    <div class="pipe">
+                        <div class="node">History<small>线上观察</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Validation<small>Current ↔ Candidate</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Final Test<small>不用于选候选</small></div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:400px;">
+                    <div class="pipe-lab">裁决规则</div>
+                    <div class="pipe">
+                        <div class="node">对照一致</div>
+                        <div class="arr">→</div>
+                        <div class="node">收益达标</div>
+                        <div class="arr">→</div>
+                        <div class="node">成本已知</div>
+                        <div class="arr">→</div>
+                        <div class="node">样本门槛</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d3" style="top:580px;">
+                    <div class="pipe-lab">生命周期处理</div>
+                    <div class="pipe dashed">
+                        <div class="node">PASS</div>
+                        <div class="arr">/</div>
+                        <div class="node">FAIL</div>
+                        <div class="arr">/</div>
+                        <div class="node">CONTINUE_SAMPLING</div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">验证 Run 不进入线上 Monitor。数据内容隔离、逐题负迁移与统计置信仍在下一轮计划。</p>
+                <p class="footer-src">minimum_paired_runs 至少两对只是结构下限，不是显著性保证。</p>
+                <div class="page-no">11 / 19</div>
+            </section>
+
+            <!-- 12 DEMO -->
+            <section class="slide" data-slide="12" id="s12">
+                <div class="margin-rule"></div>
+                <div class="running">III 效果 · 演示</div>
+                <div class="source-tag">待补真实回放</div>
+                <h2 class="page-title">演示：从一次 Run 追到 Gate</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:220px;">
+                    <div class="pipe-lab">回放路径 · 不调用模型</div>
+                    <div class="pipe">
+                        <div class="node">看任务结果</div>
+                        <div class="arr">→</div>
+                        <div class="node">追踪节点与消息</div>
+                        <div class="arr">→</div>
+                        <div class="node">比较候选差异</div>
+                        <div class="arr">→</div>
+                        <div class="node">核对 Gate 与 Current</div>
+                    </div>
+                </div>
+                <div class="placeholder reveal d2" style="position:absolute;left:128px;top:430px;width:1690px;height:290px;">
+                    <div class="kicker">S02–S05 · 待补证据</div>
+                    <p style="font-size:28px;font-family:var(--font-display);color:var(--ink);">嵌入 60–90 秒静音演示或主界面截图。保留播放起点和当前选中的 Run。</p>
+                </div>
+                <p class="footer-src">记录来源：[批次/Run/Evolution ID]；展示方式：[历史回放/当前库]</p>
+                <div class="page-no">12 / 19</div>
+            </section>
+
+            <!-- 13 RESULTS -->
+            <section class="slide" data-slide="13" id="s13">
+                <div class="margin-rule"></div>
+                <div class="running">III 效果 · 已有实测</div>
+                <div class="source-tag">历史实测｜2026-09-09</div>
+                <h2 class="page-title">当前实测：成功运行，也拒绝候选</h2>
+                <div class="title-rule"></div>
+                <div class="result">
+                    <div class="panel reveal d1" style="padding:24px;">
+                        <div class="kicker">不同任务，不作算法优劣对照</div>
+                        <table>
+                            <thead>
+                                <tr><th>任务</th><th>规则结果</th><th>Tokens</th><th>耗时</th><th>返工</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>复杂可行任务</td>
+                                    <td>通过，0 个硬约束错误</td>
+                                    <td>4,879</td>
+                                    <td>9.180 秒</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr>
+                                    <td>不可行诊断任务</td>
+                                    <td>未通过，1 个工期错误</td>
+                                    <td>5,077</td>
+                                    <td>12.622 秒</td>
+                                    <td>1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="panel reveal d2" style="padding:24px;">
+                        <div class="kicker">候选比较 · E03</div>
+                        <table>
+                            <thead>
+                                <tr><th>候选</th><th>Gate</th><th>理由</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Prompt Candidate</td>
+                                    <td><span class="badge fail">Reject</span></td>
+                                    <td>未满足当时 Gate 的正向收益条件</td>
+                                </tr>
+                                <tr>
+                                    <td>Verifier Candidate</td>
+                                    <td><span class="badge fail">Reject</span></td>
+                                    <td>Token 增幅约 17.50%，超过当时 10% 边界</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="margin-top:14px;font-size:18px;color:var(--muted);">promoted=null 表示该记录没有候选晋级。</p>
+                    </div>
+                </div>
+                <p class="callout reveal d4">已跑通受控比较与拒绝路径；尚未证明真实演进带来稳定收益。</p>
+                <p class="footer-src">历史诊断批次：2 个线上 Run、每候选 1 对验证；阈值为演示设置；不同版本未重新实测；金额费用/综合质量未提供。来源 E01/E02/E03。</p>
+                <div class="page-no">13 / 19</div>
+            </section>
+
+            <!-- 14 STATUS -->
+            <section class="slide" data-slide="14" id="s14">
+                <div class="margin-rule"></div>
+                <div class="running">III 效果 · 进度</div>
+                <div class="source-tag">按当前代码核对</div>
+                <h2 class="page-title">核心流程已有实现，验证与展示继续补齐</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:250px;">
+                    <div class="pipe-lab">验收层次不同，不能画成完成百分比</div>
+                    <div class="pipe">
+                        <div class="node">已有<small>在线链路 · 观察 · Prompt/Verifier · Gate · 本地 API</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">下一轮<small>升级 · 分区 · 逐题指标 · 可视化 · 基线</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">继续验证<small>Tool · 自动回滚 · 三类实验 · 未来影响</small></div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">代码存在、测试通过和效果成立，是不同的验收层次。</p>
+                <p class="footer-src">当前尚无前端，不因本页画了界面就把可视化记为已完成。</p>
+                <div class="page-no">14 / 19</div>
+            </section>
+
+            <!-- 15 CLOSE -->
+            <section class="slide" data-slide="15" id="s15">
+                <div class="margin-rule"></div>
+                <div class="running">III 效果 · 下一步</div>
+                <div class="source-tag">分工与目标</div>
+                <h2 class="page-title">下一步：把机制验证变成可信实验</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:230px;">
+                    <div class="pipe-lab">A：核心与验证</div>
+                    <div class="pipe">
+                        <div class="node">升级 / 隔离</div>
+                        <div class="arr">→</div>
+                        <div class="node">逐题证据</div>
+                        <div class="arr">→</div>
+                        <div class="node">真实比较</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:430px;">
+                    <div class="pipe-lab">B：展示与表达</div>
+                    <div class="pipe dashed">
+                        <div class="node">只读接口 / 页面</div>
+                        <div class="arr">→</div>
+                        <div class="node">真实截图</div>
+                        <div class="arr">→</div>
+                        <div class="node">PPT / 演示</div>
+                    </div>
+                </div>
+                <p class="reveal d3" style="position:absolute;left:128px;top:620px;font-size:24px;">负责人：审查、实验规则确认与验收。</p>
+                <p class="close-line reveal d4">每一次改变，都能回答：为何触发、改了哪里、依据是什么。</p>
+                <div class="qa reveal d5">Q&amp;A</div>
+                <div class="page-no">15 / 19</div>
+            </section>
+
+            <!-- B01 -->
+            <section class="slide" data-slide="16" id="s16">
+                <div class="margin-rule"></div>
+                <div class="running">EvoTeam · 备份</div>
+                <div class="source-tag">已实现状态操作 / 自动规则未完成</div>
+                <h2 class="page-title">备份：生命周期与完整离线链</h2>
+                <div class="title-rule"></div>
+                <div class="pipe-block reveal d1" style="top:214px;">
+                    <div class="pipe-lab">完整离线链</div>
+                    <div class="pipe dashed">
+                        <div class="node">Experience</div>
+                        <div class="arr">→</div>
+                        <div class="node">Monitor</div>
+                        <div class="arr">→</div>
+                        <div class="node">Manager</div>
+                        <div class="arr">→</div>
+                        <div class="node">Attribution</div>
+                        <div class="arr">→</div>
+                        <div class="node">Mutation</div>
+                        <div class="arr">→</div>
+                        <div class="node">Validator</div>
+                        <div class="arr">→</div>
+                        <div class="node">Gate</div>
+                    </div>
+                </div>
+                <div class="pipe-block reveal d2" style="top:430px;">
+                    <div class="pipe-lab">生命周期</div>
+                    <div class="pipe">
+                        <div class="node">Promote / Reject<small>Reject 只拒绝未上线候选</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Stable / Reopen<small>稳定后停搜，达阈值才重开</small></div>
+                        <div class="arr">→</div>
+                        <div class="node">Rollback<small>撤下已上线退化版本</small></div>
+                    </div>
+                </div>
+                <div class="life-bot reveal d2" style="display:none;">
+                    <div class="panel" style="padding:22px;">
+                        <strong>Promote / Reject</strong>
+                        <p style="margin-top:10px;font-size:20px;color:var(--muted);">Reject 拒绝尚未上线的候选。</p>
+                    </div>
+                    <div class="panel" style="padding:22px;">
+                        <strong>Stable / Reopen</strong>
+                        <p style="margin-top:10px;font-size:20px;color:var(--muted);">稳定后停止主动搜索；新证据达阈值才重开。</p>
+                    </div>
+                    <div class="panel" style="padding:22px;">
+                        <strong>Rollback</strong>
+                        <p style="margin-top:10px;font-size:20px;color:var(--muted);">撤下已上线退化版本。自动检测规则未完成。</p>
+                    </div>
+                </div>
+                <p class="footer-src">回答：怎么停止？拒绝和回滚区别？</p>
+                <div class="page-no">16 / 19</div>
+            </section>
+
+            <!-- B02 -->
+            <section class="slide" data-slide="17" id="s17">
+                <div class="margin-rule"></div>
+                <div class="running">EvoTeam · 备份</div>
+                <div class="source-tag">规划中，未全部执行</div>
+                <h2 class="page-title">备份：实验设计</h2>
+                <div class="title-rule"></div>
+                <div class="exp">
+                    <div class="panel reveal d1" style="padding:32px;">
+                        <div class="kicker">对照</div>
+                        <p style="font-size:24px;line-height:1.7;">三分区：History / Validation / Final Test<br>固定多 Agent / Retry / Prompt / Tool / Structure / Full</p>
+                    </div>
+                    <div class="panel reveal d2" style="padding:32px;">
+                        <div class="kicker">指标</div>
+                        <p style="font-size:24px;line-height:1.7;">成功率分母<br>Token / 延迟<br>离线成本<br>子类退化（未做项标规划）</p>
+                    </div>
+                </div>
+                <p class="footer-src">回答：怎样证明不是只多花钱或只靠 Retry？</p>
+                <div class="page-no">17 / 19</div>
+            </section>
+
+            <!-- B03 -->
+            <section class="slide" data-slide="18" id="s18">
+                <div class="margin-rule"></div>
+                <div class="running">EvoTeam · 备份</div>
+                <div class="source-tag">代码里程碑 677809a</div>
+                <h2 class="page-title">备份：工程证据</h2>
+                <div class="title-rule"></div>
+                <div class="eng">
+                    <div class="panel reveal d1" style="padding:32px;">
+                        <div class="kicker">审查后检查</div>
+                        <p style="font-family:var(--font-display);font-size:56px;margin:12px 0 4px;">106 passed</p>
+                        <p style="font-size:24px;color:var(--muted);">1 skipped</p>
+                        <ul style="margin-top:24px;font-size:22px;line-height:1.6;">
+                            <li>重复消费</li>
+                            <li>取消传播</li>
+                            <li>归因与 Gate 回归</li>
+                        </ul>
+                    </div>
+                    <div class="placeholder reveal d2">
+                        <div class="kicker">S07 · 待补证据</div>
+                        <p style="font-size:28px;font-family:var(--font-display);color:var(--ink);">预留最近终端截图。更新时数字随截图一起换。</p>
+                    </div>
+                </div>
+                <p class="footer-src">回答：怎么保证边界不被绕过？跳过外部模型冒烟；保留上游弃用警告。</p>
+                <div class="page-no">18 / 19</div>
+            </section>
+
+            <!-- B04 -->
+            <section class="slide" data-slide="19" id="s19">
+                <div class="margin-rule"></div>
+                <div class="running">EvoTeam · 备份</div>
+                <div class="source-tag">边界说明</div>
+                <h2 class="page-title">备份：常见问答</h2>
+                <div class="title-rule"></div>
+                <div class="faq">
+                    <div class="panel reveal d1">
+                        <strong>为什么 openJiuwen？</strong>
+                        <p style="margin-top:8px;font-size:22px;">运行能力由 SDK 承担，组织治理由 EvoTeam 负责。</p>
+                    </div>
+                    <div class="panel reveal d2">
+                        <strong>是真自演进吗？</strong>
+                        <p style="margin-top:8px;font-size:22px;">当前有候选验证治理机制，真实收益仍待证据。</p>
+                    </div>
+                    <div class="panel reveal d3">
+                        <strong>为什么不是每次组队？</strong>
+                        <p style="margin-top:8px;font-size:22px;">保持固定可复现起点与版本因果路径。</p>
+                    </div>
+                    <div class="panel reveal d4">
+                        <strong>增加 Agent 一定更好？</strong>
+                        <p style="margin-top:8px;font-size:22px;">不预设。按对照 Gate 决定，允许较便宜的 Tool Policy 胜出。</p>
+                    </div>
+                </div>
+                <p class="footer-src">默认不播放。主讲用 01–15。</p>
+                <div class="page-no">19 / 19</div>
+            </section>
+
+        </main>
+    </div>
+
+    <nav class="deck-controls" aria-label="幻灯片控制">
+        <button type="button" id="prevBtn">←</button>
+        <span id="chromePage">01 / 19</span>
+        <button type="button" id="nextBtn">→</button>
+    </nav>
+
+    <script>
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll(".slide");
+                this.currentSlide = 0;
+                this.stage = document.getElementById("deckStage");
+                this.pageChrome = document.getElementById("chromePage");
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupButtons();
+                this.setupToc();
+                this.showSlide(0);
+            }
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener("resize", scale);
+            }
+            setupKeyboardNav() {
+                document.addEventListener("keydown", (e) => {
+                    if (e.target && e.target.getAttribute("contenteditable")) return;
+                    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) {
+                        e.preventDefault();
+                        this.showSlide(this.currentSlide + 1);
+                    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) {
+                        e.preventDefault();
+                        this.showSlide(this.currentSlide - 1);
+                    } else if (e.key === "Home") this.showSlide(0);
+                    else if (e.key === "End") this.showSlide(this.slides.length - 1);
+                });
+            }
+            setupTouchNav() {
+                let x0 = null;
+                this.stage.addEventListener("touchstart", (e) => { x0 = e.changedTouches[0].screenX; }, { passive: true });
+                this.stage.addEventListener("touchend", (e) => {
+                    if (x0 === null) return;
+                    const dx = e.changedTouches[0].screenX - x0;
+                    if (Math.abs(dx) > 50) this.showSlide(this.currentSlide + (dx < 0 ? 1 : -1));
+                    x0 = null;
+                }, { passive: true });
+            }
+            setupWheelNav() {
+                let locked = false;
+                window.addEventListener("wheel", (e) => {
+                    if (locked) return;
+                    if (Math.abs(e.deltaY) < 40) return;
+                    locked = true;
+                    this.showSlide(this.currentSlide + (e.deltaY > 0 ? 1 : -1));
+                    setTimeout(() => { locked = false; }, 450);
+                }, { passive: true });
+            }
+            setupButtons() {
+                document.getElementById("prevBtn").addEventListener("click", () => this.showSlide(this.currentSlide - 1));
+                document.getElementById("nextBtn").addEventListener("click", () => this.showSlide(this.currentSlide + 1));
+            }
+            setupToc() {
+                document.querySelectorAll(".chapter").forEach((btn) => {
+                    btn.addEventListener("click", () => {
+                        const n = parseInt(btn.getAttribute("data-go"), 10);
+                        if (!Number.isNaN(n)) this.showSlide(n);
+                    });
+                });
+            }
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                this.slides.forEach((slide, i) => {
+                    slide.classList.toggle("active", i === this.currentSlide);
+                    slide.classList.toggle("visible", i === this.currentSlide);
+                });
+                const n = String(this.currentSlide + 1).padStart(2, "0");
+                const total = String(this.slides.length).padStart(2, "0");
+                this.pageChrome.textContent = `${n} / ${total}`;
+            }
+        }
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.key = "evoteam-paper-ink-edits-v1";
+                this.toggle = document.getElementById("editToggle");
+            }
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle("editing", this.isActive);
+                this.toggle.classList.toggle("active", this.isActive);
+                document.querySelectorAll(".slide h1, .slide h2, .slide h3, .slide p, .slide td, .slide th, .slide li, .slide .chip, .slide .callout, .slide .cover-meta, .slide .cover-lede, .slide .cover-sub").forEach((el) => {
+                    el.setAttribute("contenteditable", this.isActive ? "true" : "false");
+                });
+            }
+            save() {
+                localStorage.setItem(this.key, document.getElementById("deckStage").innerHTML);
+            }
+        }
+        const deck = new SlidePresentation();
+        const editor = new InlineEditor();
+        document.getElementById("editToggle").addEventListener("click", () => editor.toggleEditMode());
+        const hotzone = document.querySelector(".edit-hotzone");
+        const editToggle = document.getElementById("editToggle");
+        let hideTimeout = null;
+        const showToggle = () => { clearTimeout(hideTimeout); editToggle.classList.add("show"); };
+        const hideToggle = () => {
+            hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove("show"); }, 400);
+        };
+        hotzone.addEventListener("mouseenter", showToggle);
+        hotzone.addEventListener("mouseleave", hideToggle);
+        editToggle.addEventListener("mouseenter", showToggle);
+        editToggle.addEventListener("mouseleave", hideToggle);
+        hotzone.addEventListener("click", () => editor.toggleEditMode());
+        document.addEventListener("keydown", (e) => {
+            if ((e.key === "e" || e.key === "E") && !e.target.getAttribute("contenteditable")) editor.toggleEditMode();
+            if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); editor.save(); }
+        });
+    </script>
+</body>
+</html>
