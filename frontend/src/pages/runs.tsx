@@ -152,7 +152,7 @@ export function Runs() {
                           <td>
                             <Link
                               className="version-link"
-                              to={`/strategies/${encodeURIComponent(run.strategy.strategy_id)}`}
+                              to={`/dashboard/strategies/${encodeURIComponent(run.strategy.strategy_id)}`}
                             >
                               v{run.strategy.version}
                             </Link>
@@ -191,7 +191,7 @@ export function Runs() {
                           <td>
                             <Link
                               className="view-link"
-                              to={`/runs/${encodeURIComponent(run.run_id)}`}
+                              to={`/dashboard/runs/${encodeURIComponent(run.run_id)}`}
                               aria-label={`查看 ${run.run_id}`}
                             >
                               查看 <ArrowRight size={14} />

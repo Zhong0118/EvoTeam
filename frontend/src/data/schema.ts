@@ -90,6 +90,14 @@ export const runSchema = z.object({
           end_hour: z.number(),
         }),
       ),
+      milestones: z
+        .array(
+          z.object({
+            milestone_id: z.string(),
+            completion_hour: z.number(),
+          }),
+        )
+        .optional(),
       risks: z.array(z.string()),
       adjustments: z.array(z.string()),
       validation_notes: z.array(z.string()),

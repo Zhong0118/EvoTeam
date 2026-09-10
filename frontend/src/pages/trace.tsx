@@ -44,7 +44,13 @@ const names: Record<string, string> = {
   tool_called: "调用工具",
   tool_result: "工具结果",
 };
-export function Trace() {
+export function Trace({
+  runId: injected,
+  embedded = false,
+}: {
+  runId?: string;
+  embedded?: boolean;
+} = {}) {
   const [compact, setCompact] = useState(
     () => window.matchMedia("(max-width: 767px)").matches,
   );
@@ -54,7 +60,8 @@ export function Trace() {
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  const { runId = "" } = useParams();
+  const { runId: paramRunId = "" } = useParams();
+  const runId = injected ?? paramRunId;
   const [params, setParams] = useSearchParams();
   const query = useEvidence(
     runId ? `/runs/${encodeURIComponent(runId)}` : null,
@@ -159,12 +166,14 @@ export function Trace() {
   });
   return (
     <>
-      <Link
-        className="back-link"
-        to={runId ? `/runs/${encodeURIComponent(runId)}` : "/runs"}
-      >
-        <ArrowLeft size={14} /> {runId ? "任务详情" : "运行记录"}
-      </Link>
+      {!embedded && (
+        <Link
+          className="back-link"
+          to={runId ? `/runs/${encodeURIComponent(runId)}` : "/dashboard/runs"}
+        >
+          <ArrowLeft size={14} /> {runId ? "任务详情" : "运行记录"}
+        </Link>
+      )}
       <PageTitle
         title="团队与执行证据"
         description={
@@ -175,7 +184,7 @@ export function Trace() {
       />
       {!runId ? (
         <Empty title="尚未选择 Run">
-          <Link to="/runs">前往运行记录选择 →</Link>
+          <Link to="/dashboard/runs">前往运行记录选择 →</Link>
         </Empty>
       ) : (
         <>

@@ -11,7 +11,7 @@ export default defineConfig({
   projects: [
     {
       name: "fixture",
-      testMatch: "workbench.spec.ts",
+      testMatch: ["workbench.spec.ts", "session.spec.ts"],
       use: { baseURL: "http://127.0.0.1:5174" },
     },
     {

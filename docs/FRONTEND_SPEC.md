@@ -1,5 +1,7 @@
 # EvoTeam 前端设计与交互规范
 
+> **范围说明（V2）：** 会话工作区（`/` 与 `/sessions/:id`，对话/轨迹/团队/演进四视图）按 [EVOTEAM_FINAL_UI_DESIGN_SPEC_V2](EVOTEAM_FINAL_UI_DESIGN_SPEC_V2.md) 实现；本文件继续约束后台工作台（`/dashboard/*`）的四类证据页面。旧路由 `/runs` 等保留兼容跳转。
+
 本文件是前端的唯一设计依据。前端现由负责人及其 Codex 接手，首版四类页面与只读 API 已实现；实际启动和检查见 `frontend/README.md`。任务范围及 HTTP 数据契约见 [任务书 B](TASK_PRESENTATION.md)，PPT 页序与素材规则见 [PPT 设计](PRESENTATION_PLAN.md)。本文件不新增核心开发任务。
 
 ## 1. 产品定位与开发边界
