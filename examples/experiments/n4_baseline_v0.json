@@ -1,0 +1,17 @@
+{
+  "experiment_id": "n4-baseline-v0-history2-r1",
+  "phase": "baseline",
+  "approved_scope": "fixed_v0_history_only",
+  "manifest_ref": {"id": "project-planning-manifest", "version": "2"},
+  "dataset_ref": {"id": "project-planning-history", "version": "2"},
+  "strategy_file": "examples/project_planning/strategy.json",
+  "strategy_ref": {"strategy_id": "project-planning", "version": 0},
+  "evaluator_ref": {"id": "project-planning-rules", "version": "1"},
+  "repeats": 1,
+  "maximum_model_requests": 18,
+  "expected_task_count": 6,
+  "expected_agent_calls_per_task": 3,
+  "candidate_comparison_enabled": false,
+  "final_test_enabled": false,
+  "authorization_note": "2026-09-10 项目负责人授权执行者在剩余额度内自行决定；本批仅固定 v0 History 基线。"
+}

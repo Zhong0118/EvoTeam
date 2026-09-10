@@ -26,15 +26,27 @@
 
 ### 2.1 数据清单与内容身份
 
-首个项目规划清单为 `project-planning-manifest@1`，文件位于 `examples/datasets/project_planning_manifest.json`。三个分区分别登记为：
+项目规划清单当前为 `project-planning-manifest@2`，文件位于 `examples/datasets/project_planning_manifest.json`。N4 前将 History 扩充为两个子类各三题；Validation 和 Final Test 内容保持版本 1，不因 History 扩充而改动。三个分区分别登记为：
 
 | 分区 | AssetRef | 当前人工复核子类 |
 | --- | --- | --- |
-| History | `project-planning-history@1` | `resource_conflict`、`dependency` |
+| History | `project-planning-history@2` | `resource_conflict`、`dependency`（各 3 题） |
 | Validation | `project-planning-validation@1` | `deadline`、`skill` |
 | Final Test | `project-planning-final-test@1` | `budget`、`valid_infeasible` |
 
-`valid_infeasible` 表示输入通过固定 Task/PlanningInput Schema，但不存在满足技能等硬约束的合法排期，不表示输入格式损坏。当前每个子类只有一条人工复核题，足以覆盖隔离和执行路径，不足以支持子类稳定性或真实收益结论；N4 基线前应按预注册样本量扩充。
+`valid_infeasible` 表示输入通过固定 Task/PlanningInput Schema，但不存在满足技能等硬约束的合法排期，不表示输入格式损坏。History 当前每个子类三题，只用于第一轮描述性 v0 基线；Validation 与 Final Test 每个子类仍只有一题，尚不足以支持稳定的逐子类收益结论。
+
+### 2.2 N4 第一阶段冻结配置
+
+第一阶段只运行 `n4-baseline-v0-history2-r1`：固定 v0、History@2 六题、一次重复、Planner/Executor/Critic 每题最多三次模型调用，总硬上限 18 次。配置位于 `examples/experiments/n4_baseline_v0.json`。候选比较和 Final Test 在本批次均关闭；不得用剩余额度顺便启动。执行入口会拒绝覆盖已有输出目录，并在调用前核对清单版本、任务数、Strategy、模型引用和请求上限。
+
+命令如下，输出数据库不进入 Git，脱敏 `baseline_report.json` 保存代码提交、三份输入摘要、模型非秘密参数、Prompt 引用、预算、运行 ID、评价与实际请求数：
+
+```bash
+uv run python scripts/run_n4_baseline.py \
+  --config examples/experiments/n4_baseline_v0.json \
+  --output runs/n4-baseline-v0-history2-r1
+```
 
 任务内容摘要固定为 SHA-256：仅对 `task_type`、`input_schema`、`inputs` 做规范 JSON 编码，使用 UTF-8、键排序和固定分隔符。`task_id` 与 `instruction` 被排除，因此只改 ID、改写指令或调整 JSON 键顺序不能把同一结构化题目放进其他分区。该摘要用于发现完全相同的结构化输入，不声称能识别语义改写、数值扰动或所有同构题目。
 

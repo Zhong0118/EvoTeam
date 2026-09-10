@@ -126,6 +126,10 @@ def test_versioned_manifest_registers_all_subclasses_and_detects_content_change(
         "budget",
         "valid_infeasible",
     }
+    history = next(dataset for dataset in manifest.datasets if dataset.partition == "history")
+    assert len(history.tasks) == 6
+    assert [entry.subclass for entry in history.tasks].count("resource_conflict") == 3
+    assert [entry.subclass for entry in history.tasks].count("dependency") == 3
     for dataset in manifest.datasets:
         tasks = datasets.load(dataset.ref, partition=dataset.partition)
         for task in tasks:

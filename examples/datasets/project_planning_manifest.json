@@ -1,8 +1,8 @@
 {
-  "ref": {"id": "project-planning-manifest", "version": "1"},
+  "ref": {"id": "project-planning-manifest", "version": "2"},
   "datasets": [
     {
-      "ref": {"id": "project-planning-history", "version": "1"},
+      "ref": {"id": "project-planning-history", "version": "2"},
       "partition": "history",
       "tasks": [
         {
@@ -51,6 +51,115 @@
                 {"work_id": "acceptance", "description": "验收功能", "duration_hours": 2, "required_skills": ["qa"], "dependencies": ["implementation"]}
               ],
               "milestones": [{"milestone_id": "accepted", "work_ids": ["requirements", "implementation", "acceptance"], "deadline_hour": 10}]
+            }
+          }
+        },
+        {
+          "task_id": "history-resource-conflict-content",
+          "task_fingerprint": "a4c2b2ebc7c71ca5dfd8c9b77b48377bc7fcf644ec1bb3fb6f26904ee3159559",
+          "subclass": "resource_conflict",
+          "human_review": "单人承担文案与视觉，两项无依赖但可顺序完成；用于检查半开区间资源占用。",
+          "task": {
+            "task_id": "history-resource-conflict-content",
+            "task_type": "project_planning",
+            "instruction": "安排单人完成文案和视觉设计，避免时间重叠。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成发布素材",
+              "deadline_hour": 7,
+              "budget_minor": 630,
+              "currency": "CNY",
+              "people": [{"person_id": "helen", "skills": ["copywriting", "design"], "hourly_cost_minor": 90, "available_from_hour": 0, "available_until_hour": 7}],
+              "work_items": [
+                {"work_id": "copy", "description": "撰写发布文案", "duration_hours": 3, "required_skills": ["copywriting"], "dependencies": []},
+                {"work_id": "visual", "description": "制作发布视觉", "duration_hours": 3, "required_skills": ["design"], "dependencies": []}
+              ],
+              "milestones": [{"milestone_id": "assets-ready", "work_ids": ["copy", "visual"], "deadline_hour": 7}]
+            }
+          }
+        },
+        {
+          "task_id": "history-resource-conflict-release",
+          "task_fingerprint": "ba29904946517a7d5e8fe9aac26580e1979f291467af2bc6e1a26fde78a21625",
+          "subclass": "resource_conflict",
+          "human_review": "两人技能不同，但同一发布人员承担两个可顺序执行的工作；存在合法无冲突方案。",
+          "task": {
+            "task_id": "history-resource-conflict-release",
+            "task_type": "project_planning",
+            "instruction": "安排构建、发布和公告，确保人员不被重复占用。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成产品发布",
+              "deadline_hour": 9,
+              "budget_minor": 1080,
+              "currency": "CNY",
+              "people": [
+                {"person_id": "ivan", "skills": ["build"], "hourly_cost_minor": 120, "available_from_hour": 0, "available_until_hour": 9},
+                {"person_id": "jane", "skills": ["release", "communication"], "hourly_cost_minor": 120, "available_from_hour": 0, "available_until_hour": 9}
+              ],
+              "work_items": [
+                {"work_id": "build", "description": "构建版本", "duration_hours": 3, "required_skills": ["build"], "dependencies": []},
+                {"work_id": "deploy", "description": "部署版本", "duration_hours": 2, "required_skills": ["release"], "dependencies": ["build"]},
+                {"work_id": "announce", "description": "发布公告", "duration_hours": 2, "required_skills": ["communication"], "dependencies": ["deploy"]}
+              ],
+              "milestones": [{"milestone_id": "released", "work_ids": ["build", "deploy", "announce"], "deadline_hour": 9}]
+            }
+          }
+        },
+        {
+          "task_id": "history-dependency-data-pipeline",
+          "task_fingerprint": "c6223f9ff8e1a3458bd82a584c084979781584ae1948ac6ca7543f2892826249",
+          "subclass": "dependency",
+          "human_review": "采集、清洗、报告构成三段依赖链，可由不同人员衔接完成。",
+          "task": {
+            "task_id": "history-dependency-data-pipeline",
+            "task_type": "project_planning",
+            "instruction": "按照数据流水线依赖安排采集、清洗和报告。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "交付数据质量报告",
+              "deadline_hour": 9,
+              "budget_minor": 990,
+              "currency": "CNY",
+              "people": [
+                {"person_id": "kai", "skills": ["collection", "cleaning"], "hourly_cost_minor": 110, "available_from_hour": 0, "available_until_hour": 9},
+                {"person_id": "li", "skills": ["analysis"], "hourly_cost_minor": 110, "available_from_hour": 0, "available_until_hour": 9}
+              ],
+              "work_items": [
+                {"work_id": "collect", "description": "采集数据", "duration_hours": 2, "required_skills": ["collection"], "dependencies": []},
+                {"work_id": "clean", "description": "清洗数据", "duration_hours": 3, "required_skills": ["cleaning"], "dependencies": ["collect"]},
+                {"work_id": "report", "description": "分析并出具报告", "duration_hours": 3, "required_skills": ["analysis"], "dependencies": ["clean"]}
+              ],
+              "milestones": [{"milestone_id": "report-ready", "work_ids": ["collect", "clean", "report"], "deadline_hour": 9}]
+            }
+          }
+        },
+        {
+          "task_id": "history-dependency-release-approval",
+          "task_fingerprint": "932b0521ae3739702185995cc678d54cc5e9f7e17f07abdd633fe66cda838c34",
+          "subclass": "dependency",
+          "human_review": "实现、测试、审批、发布为四段依赖链，期限和人员可用性允许合法顺序方案。",
+          "task": {
+            "task_id": "history-dependency-release-approval",
+            "task_type": "project_planning",
+            "instruction": "按实现、测试、审批、发布顺序制定上线计划。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成受控上线",
+              "deadline_hour": 12,
+              "budget_minor": 1440,
+              "currency": "CNY",
+              "people": [
+                {"person_id": "mei", "skills": ["python"], "hourly_cost_minor": 120, "available_from_hour": 0, "available_until_hour": 12},
+                {"person_id": "noah", "skills": ["qa", "approval", "release"], "hourly_cost_minor": 120, "available_from_hour": 0, "available_until_hour": 12}
+              ],
+              "work_items": [
+                {"work_id": "implement", "description": "实现变更", "duration_hours": 4, "required_skills": ["python"], "dependencies": []},
+                {"work_id": "test", "description": "执行测试", "duration_hours": 2, "required_skills": ["qa"], "dependencies": ["implement"]},
+                {"work_id": "approve", "description": "审批上线", "duration_hours": 1, "required_skills": ["approval"], "dependencies": ["test"]},
+                {"work_id": "release", "description": "执行发布", "duration_hours": 1, "required_skills": ["release"], "dependencies": ["approve"]}
+              ],
+              "milestones": [{"milestone_id": "online", "work_ids": ["implement", "test", "approve", "release"], "deadline_hour": 12}]
             }
           }
         }
