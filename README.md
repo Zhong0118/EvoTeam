@@ -19,6 +19,16 @@ EvoTeam 是基于 openJiuwen Core 的经验驱动多智能体组织演进系统�
 
 第一次接手建议先读 [模块关系与系统运行指南](docs/SYSTEM_WALKTHROUGH.md)，运行示例后沿调用链阅读代码。完整文件索引见 [开发说明](DEVELOPMENT.md)，未完成阶段见 [路线图](docs/ROADMAP.md)。具体实验阈值仍需基线校准。
 
+## 组员从这里开始
+
+团队统一以 **main** 为阅读和开工基线。已完成的代码、开发计划和 PPT 设计合并到 main 后再交付，临时任务分支不作为团队查阅入口。
+
+1. 先更新本地 main：`git switch main`，再执行 `git pull --ff-only origin main`；有未提交工作时先保存，避免切换中丢失改动。
+2. 阅读 [并行开发与交付计划](docs/NEXT_STEPS.md)：组员 A 从核心 N1 开始，组员 B 从 B0 展示契约和 B4 PPT 骨架开始；负责人准备任务数据并负责集成验收。
+3. PPT 制作直接使用 [逐页设计文档](docs/PRESENTATION_PLAN.md)，系统运行参考 [运行指南](docs/SYSTEM_WALKTHROUGH.md)。
+
+多人开发仍按具体任务隔离修改并通过 PR 合并；完成后清理对应临时分支。大家查看最新成果只需看 main，无须追踪历史任务分支。
+
 ## 阅读入口
 
 | 文档 | 唯一职责 |
@@ -28,9 +38,9 @@ EvoTeam 是基于 openJiuwen Core 的经验驱动多智能体组织演进系统�
 | [架构](docs/ARCHITECTURE.md) | 术语、六层职责、两个闭环、模块与数据契约 |
 | [决策](docs/DECISIONS.md) | 已冻结决策、来源与仍需校准的参数 |
 | [实验](docs/EXPERIMENTS.md) | 数据隔离、对照、归因、Gate 与可复现要求 |
-| [下一轮实施计划](docs/NEXT_STEPS.md) | 数据库升级、数据隔离、逐任务验证与真实基线的执行任务 |
+| [并行开发与交付计划](docs/NEXT_STEPS.md) | 两位组员分工、核心与展示任务、依赖和验收 |
 | [路线图](docs/ROADMAP.md) | P0–P5 实施顺序与阶段验收 |
-| [汇报规划](docs/PRESENTATION_PLAN.md) | 面向最终方案的汇报结构与证据要求 |
+| [PPT 总体设计](docs/PRESENTATION_PLAN.md) | 逐页文案、布局、样式、讲稿与截图素材槽位 |
 | [相关工作](docs/RELATED_WORK.md) | 既有参考文献入口与后续核验范围 |
 | [Demo 测试报告](docs/DEMO_TEST_REPORT.md) | 初代测试记录与最新 DeepSeek 真实回归 |
 | [版本对比](docs/VERSION_COMPARISON.md) | main 与组员分支增量、审查修复、当前进展及后续次序 |
