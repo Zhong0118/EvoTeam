@@ -67,6 +67,18 @@ uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 
 `roles`、`v0` 只预览配置，v0 输出为 DRAFT。`demo` 使用手写产物执行真实调度、规则评价和 SQLite 封存，数据库路径必须不存在；重复运行请换新文件名。演示不调用模型，不能作为质量或演进实验结果。完整开发与检查方式见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
+## 前端证据工作台
+
+四类页面与只读查询已实现。参考 AIHOT 的浅色导航与内容布局，支持运行结果、团队 Trace 回放、演进证据和版本比较。前端现由负责人及 Codex 接手；启动、API 模式、截图来源和检查命令见 [frontend/README](frontend/README.md)。
+
+```bash
+cd frontend
+npm ci
+VITE_DATA_SOURCE=fixture VITE_STRATEGY_ID=demo-project-planning npm run dev
+```
+
+默认 API 模式读取已有数据库；上述命令显式选择开发样例，不能将样例数字用于实测汇报。页面浏览不触发模型。
+
 ## 本地 DeepSeek API
 
 项目已预留 DeepSeek V4 Flash 的 OpenAI-compatible 配置和 FastAPI 接口：

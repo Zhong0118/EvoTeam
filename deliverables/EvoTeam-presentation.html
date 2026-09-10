@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvoTeam：让团队策略随证据改进</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           THEME — Evidence Ledger
+           Cover/close: #142B2B. Body: warm paper.
+           Teal = Current/online. Violet = Candidate/offline.
+           =========================================== */
+        :root {
+            --stage-bg: #0d1c1c;
+            --slide-bg: #F5F7F6;
+            --cover: #142B2B;
+            --paper: #F5F7F6;
+            --surface: #FFFFFF;
+            --ink: #18302F;
+            --muted: #62736F;
+            --line: #D9E2DF;
+            --current: #187F72;
+            --candidate: #7660A8;
+            --fail: #B74A43;
+            --pending: #A87823;
+            --font-display: "Noto Serif SC", "Source Sans 3", serif;
+            --font-body: "Source Sans 3", "Noto Sans SC", sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.55s;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           FIXED 16:9 STAGE (viewport-base.css, full)
+           =========================================== */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg, #fff);
+        }
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+        img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+        @media print {
+            html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+            .deck-viewport { position: static; overflow: visible; background: #fff; }
+            .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+            }
+            .slide:last-child { break-after: auto; page-break-after: auto; }
+            .deck-controls { display: none !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           CHROME OUTSIDE THE STAGE
+           =========================================== */
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: rgba(20, 43, 43, 0.88);
+            color: #F5F7F6;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.04em;
+        }
+        .deck-controls button {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+            padding: 4px 8px;
+        }
+        .edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 10000;
+            cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 10px;
+            background: #142B2B;
+            color: #fff;
+            font-size: 18px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            cursor: pointer;
+        }
+        .edit-toggle.show,
+        .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        body.editing [contenteditable="true"] { outline: 1px dashed rgba(24, 127, 114, 0.7); }
+
+        /* ===========================================
+           SHARED SLIDE CHROME
+           =========================================== */
+        body, .slide { font-family: var(--font-body); color: var(--ink); }
+        .page-title {
+            position: absolute;
+            left: 115px;
+            top: 54px;
+            width: 1440px;
+            font-family: var(--font-display);
+            font-size: 42px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: 0;
+        }
+        .source-tag {
+            position: absolute;
+            right: 115px;
+            top: 62px;
+            min-width: 230px;
+            text-align: center;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--muted);
+            font-family: var(--font-mono);
+            font-size: 15px;
+            padding: 8px 14px;
+        }
+        .source-tag.impl { color: var(--current); border-color: rgba(24, 127, 114, 0.45); }
+        .source-tag.hist { color: var(--fail); border-color: rgba(183, 74, 67, 0.35); }
+        .source-tag.wait { color: var(--pending); border-color: rgba(168, 120, 35, 0.45); }
+        .source-tag.mech { color: var(--candidate); border-color: rgba(118, 96, 168, 0.4); }
+        .footer-src {
+            position: absolute;
+            left: 115px;
+            bottom: 46px;
+            width: 1540px;
+            font-size: 16px;
+            color: var(--muted);
+        }
+        .page-no {
+            position: absolute;
+            right: 115px;
+            bottom: 46px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--muted);
+        }
+        .paper-grid {
+            background-image:
+                linear-gradient(rgba(24, 127, 114, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(24, 127, 114, 0.035) 1px, transparent 1px);
+            background-size: 48px 48px;
+            background-color: var(--paper);
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+        }
+        .kicker {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+        .agent {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            padding: 10px 14px;
+            background: var(--current);
+            color: #F5F7F6;
+            font-weight: 600;
+        }
+        .ctrl {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            padding: 10px 12px;
+            background: #18302F;
+            color: #F5F7F6;
+            font-weight: 600;
+        }
+        .record {
+            position: relative;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+        }
+        .callout {
+            position: absolute;
+            left: 115px;
+            bottom: 92px;
+            width: 1690px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--current);
+            border-radius: 0 12px 12px 0;
+            padding: 16px 22px;
+            font-size: 24px;
+            line-height: 1.4;
+        }
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            background: repeating-linear-gradient(-45deg, #EEF2F0, #EEF2F0 12px, #E6EBE9 12px, #E6EBE9 24px);
+            border: 1.5px dashed #B7C4C0;
+            color: var(--muted);
+            padding: 28px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 4px 8px;
+            border-radius: 999px;
+        }
+        .badge.ok { background: rgba(24, 127, 114, 0.12); color: var(--current); }
+        .badge.fail { background: rgba(183, 74, 67, 0.12); color: var(--fail); }
+        .badge.cand { background: rgba(118, 96, 168, 0.12); color: var(--candidate); }
+        .badge.wait { background: rgba(168, 120, 35, 0.14); color: var(--pending); }
+
+        /* ===========================================
+           REVEAL
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(22px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .d1 { transition-delay: 0.08s; }
+        .slide.visible .d2 { transition-delay: 0.16s; }
+        .slide.visible .d3 { transition-delay: 0.24s; }
+        .slide.visible .d4 { transition-delay: 0.32s; }
+        .slide.visible .d5 { transition-delay: 0.40s; }
+
+        /* ===========================================
+           COVER / CLOSE
+           =========================================== */
+        .slide-dark {
+            background:
+                radial-gradient(900px 520px at 86% 18%, rgba(24, 127, 114, 0.22), transparent 60%),
+                radial-gradient(700px 480px at 78% 82%, rgba(118, 96, 168, 0.18), transparent 58%),
+                linear-gradient(180deg, #163232 0%, #142B2B 55%, #101F1F 100%);
+            color: #fff;
+        }
+        .slide-dark .page-no,
+        .slide-dark .footer-src { color: rgba(245, 247, 246, 0.55); }
+
+        /* ===========================================
+           SLIDE-SPECIFIC LAYOUTS (1920×1080 coords)
+           =========================================== */
+        .cover-stamp {
+            position: absolute; left: 115px; top: 86px;
+            font-family: var(--font-mono); font-size: 16px; letter-spacing: 0.22em;
+            text-transform: uppercase; color: #7FD1C6;
+        }
+        .cover-h1 {
+            position: absolute; left: 115px; top: 210px; width: 1040px;
+            font-family: var(--font-display); font-weight: 600; font-size: 148px; line-height: 1;
+        }
+        .cover-sub {
+            position: absolute; left: 115px; top: 390px; width: 1040px;
+            font-size: 48px; font-weight: 600; color: #E7EEEB;
+        }
+        .cover-lede {
+            position: absolute; left: 115px; top: 478px; width: 980px;
+            font-size: 26px; line-height: 1.55; color: #B7C7C4;
+        }
+        .cover-meta {
+            position: absolute; left: 115px; bottom: 86px; font-size: 22px; color: rgba(255,255,255,0.78);
+        }
+        .cover-ledger {
+            position: absolute; right: 110px; top: 210px; width: 520px;
+            display: flex; flex-direction: column; gap: 16px;
+        }
+        .ledger-card {
+            border-radius: 18px; padding: 22px;
+            background: rgba(245, 247, 246, 0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .ledger-card.current { border-color: rgba(24, 127, 114, 0.7); }
+        .ledger-card.candidate { border-color: rgba(118, 96, 168, 0.75); }
+        .nodes { display: flex; align-items: center; gap: 8px; }
+        .nodes .agent { flex: 1; text-align: center; }
+
+        .two-col { position: absolute; left: 115px; top: 205px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; width: 1690px; height: 508px; }
+        .col-card { padding: 32px 32px 28px; display: flex; flex-direction: column; }
+        .flow { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 auto; }
+        .flow span {
+            padding: 10px 14px; border-radius: 10px; background: #EEF4F2;
+            border: 1px solid var(--line); font-size: 20px;
+        }
+        .col-foot { font-size: 22px; color: var(--muted); line-height: 1.45; }
+
+        .scene-grid {
+            position: absolute; left: 115px; top: 205px;
+            display: grid; grid-template-columns: 480px 1fr 345px; gap: 28px;
+            width: 1690px; height: 550px;
+        }
+        .list-row { display: flex; flex-direction: column; gap: 10px; }
+        .list-row div {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: 10px; padding: 14px 16px; font-size: 22px;
+        }
+        .gantt { padding: 28px; }
+        .gantt-row { margin-bottom: 28px; }
+        .gantt-lab { font-size: 18px; color: var(--muted); margin-bottom: 8px; }
+        .bar-track { height: 36px; background: #EEF4F2; border-radius: 8px; position: relative; }
+        .bar { position: absolute; top: 4px; height: 28px; border-radius: 6px; background: var(--current); color: #fff; font-size: 16px; display: flex; align-items: center; padding: 0 10px; }
+        .check-list { display: flex; flex-direction: column; gap: 12px; }
+        .check-list div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; font-size: 20px; }
+
+        .strategy-wrap { position: absolute; left: 115px; top: 200px; width: 1015px; height: 518px; padding: 28px; }
+        .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: calc(100% - 58px); }
+        .strategy-grid div { background: #F3F7F6; border: 1px solid var(--line); border-radius: 12px; padding: 22px; font-size: 26px; font-weight: 600; }
+        .side-stack { position: absolute; right: 115px; top: 200px; width: 538px; height: 518px; display: flex; flex-direction: column; gap: 20px; }
+        .side-stack .panel { flex: 1; padding: 24px; }
+        .roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .roles span { font-size: 16px; padding: 6px 10px; border-radius: 8px; background: #EEF2F0; color: var(--muted); }
+        .roles span.on { background: var(--current); color: #fff; }
+
+        .chain-online, .chain-offline, .sdk-row {
+            position: absolute; left: 115px; width: 1690px; display: flex; align-items: stretch; gap: 10px;
+        }
+        .chain-online { top: 205px; height: 170px; }
+        .chain-offline { top: 405px; height: 210px; }
+        .sdk-row { top: 645px; height: 118px; }
+        .chip {
+            flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
+            padding: 12px; border-radius: 12px; font-size: 22px; font-weight: 600; line-height: 1.25;
+        }
+        .chip.online { background: rgba(24, 127, 114, 0.12); color: var(--current); border: 1px solid rgba(24, 127, 114, 0.3); }
+        .chip.offline { background: rgba(118, 96, 168, 0.12); color: var(--candidate); border: 1px solid rgba(118, 96, 168, 0.32); }
+        .chip.sdk { background: var(--surface); border: 1px solid var(--line); font-size: 20px; }
+        .bound-note {
+            position: absolute; right: 115px; top: 645px; width: 538px; height: 118px;
+            padding: 18px 22px; font-size: 22px; line-height: 1.45;
+        }
+
+        .shot-box { position: absolute; left: 115px; top: 195px; width: 1130px; height: 660px; }
+        .cap-stack { position: absolute; right: 115px; top: 205px; width: 460px; display: flex; flex-direction: column; gap: 28px; }
+        .cap-stack .panel { padding: 28px; min-height: 162px; font-size: 28px; font-weight: 600; }
+
+        .obs-grid {
+            position: absolute; left: 115px; top: 215px;
+            display: grid; grid-template-columns: 650px 400px 400px; gap: 28px;
+            width: 1690px; height: 454px;
+        }
+        .run-files { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 24px; }
+        .run-files .record { height: 118px; padding: 14px; font-size: 16px; }
+
+        .attr-grid { position: absolute; left: 115px; top: 200px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; width: 1690px; height: 518px; }
+        .attr-grid .panel { padding: 28px; }
+        .path { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+        .path div { padding: 12px 14px; border-radius: 10px; background: #F3F7F6; font-size: 20px; }
+
+        .cand-grid { position: absolute; left: 115px; top: 200px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; width: 1690px; height: 518px; }
+        .cand-grid .panel { padding: 26px; }
+        .cand-grid.later { opacity: 0.78; border-style: dashed; }
+
+        .gate-grid { position: absolute; left: 115px; top: 200px; display: grid; grid-template-columns: 555px 595px 345px; gap: 28px; width: 1690px; height: 486px; }
+        .gate-grid .panel { padding: 24px; }
+        .iso-box { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+        .rule-item { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 22px; }
+        .state-pill { padding: 16px; border-radius: 12px; margin-bottom: 12px; font-weight: 700; text-align: center; }
+
+        .demo-main { position: absolute; left: 115px; top: 175px; width: 1230px; height: 690px; }
+        .demo-steps { position: absolute; right: 115px; top: 195px; width: 365px; display: flex; flex-direction: column; gap: 16px; }
+        .demo-steps div { padding: 22px; font-size: 22px; font-weight: 600; }
+
+        .result-grid { position: absolute; left: 115px; top: 195px; display: grid; grid-template-columns: 750px 840px; gap: 36px; width: 1690px; height: 530px; }
+        table { width: 100%; border-collapse: collapse; font-size: 20px; }
+        th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        th { color: var(--muted); font-weight: 600; font-size: 16px; }
+
+        .prog-grid { position: absolute; left: 115px; top: 205px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; width: 1690px; height: 530px; }
+        .prog-grid .panel { padding: 28px; }
+        .prog-grid li { margin: 12px 0; font-size: 22px; line-height: 1.4; }
+
+        .next-grid { position: absolute; left: 115px; top: 215px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; width: 1690px; }
+        .qa {
+            position: absolute; right: 115px; bottom: 86px;
+            font-family: var(--font-display); font-size: 42px; color: #7FD1C6;
+        }
+
+        .life-top { position: absolute; left: 115px; top: 195px; width: 1690px; height: 300px; padding: 24px; }
+        .life-bot { position: absolute; left: 115px; top: 520px; width: 1690px; height: 300px; padding: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+        .exp-grid { position: absolute; left: 115px; top: 195px; display: grid; grid-template-columns: 770px 770px; gap: 36px; width: 1690px; height: 640px; }
+        .eng-grid { position: absolute; left: 115px; top: 195px; display: grid; grid-template-columns: 540px 1fr; gap: 28px; width: 1690px; height: 640px; }
+        .faq { position: absolute; left: 115px; top: 195px; width: 1690px; display: flex; flex-direction: column; gap: 18px; }
+        .faq .panel { padding: 22px 26px; min-height: 130px; }
+    </style>
+</head>
+<body>
+    <div class="edit-hotzone" aria-hidden="true"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✎</button>
+
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- ===========================================
+                 01 COVER
+                 =========================================== -->
+            <section class="slide slide-dark" data-slide="01">
+                <div class="cover-stamp reveal d1">Current / Candidate</div>
+                <div class="source-tag reveal d1" style="background:transparent;color:#B7C7C4;border-color:rgba(255,255,255,0.28);">项目定位</div>
+                <h1 class="cover-h1 reveal d2">EvoTeam</h1>
+                <p class="cover-sub reveal d3">让团队策略随证据改进</p>
+                <p class="cover-lede reveal d4">基于 openJiuwen 的经验驱动多智能体组织演进系统。模型执行任务，EvoTeam 管理配置、证据、比较和版本决定。</p>
+                <p class="cover-meta reveal d5">[团队/单位]　[主讲人]　[汇报日期]</p>
+                <div class="cover-ledger reveal d3">
+                    <div class="ledger-card current">
+                        <div class="kicker" style="color:#7FD1C6;">Current · 在线</div>
+                        <div class="nodes">
+                            <span class="agent">Planner</span>
+                            <span class="ctrl">→</span>
+                            <span class="agent">Executor</span>
+                            <span class="ctrl">→</span>
+                            <span class="agent">Critic</span>
+                        </div>
+                    </div>
+                    <div class="ledger-card candidate">
+                        <div class="kicker" style="color:#C8B8E8;">Candidate · 离线</div>
+                        <p style="font-size:22px;line-height:1.45;color:#E6E0F2;">候选经 Gate 后，虚线才指回服务链。</p>
+                        <p style="margin-top:10px;font-size:16px;color:rgba(255,255,255,0.45);">机制示意 · 非正式晋级</p>
+                    </div>
+                </div>
+                <div class="page-no">01 / 18</div>
+            </section>
+
+            <!-- 02 PROBLEM -->
+            <section class="slide paper-grid" data-slide="02">
+                <h2 class="page-title">单次返工之后，下一次任务会变好吗？</h2>
+                <div class="source-tag mech">机制示意</div>
+                <div class="two-col">
+                    <article class="panel col-card reveal d1">
+                        <div class="kicker">任务内补救</div>
+                        <h3 style="font-size:32px;margin-bottom:8px;">本次上下文改变</h3>
+                        <div class="flow">
+                            <span>Task A</span><span>执行</span><span>返工</span><span>输出</span>
+                        </div>
+                        <p class="col-foot">本次上下文改变，策略可以保持不变。</p>
+                    </article>
+                    <article class="panel col-card reveal d2">
+                        <div class="kicker" style="color:var(--candidate);">跨任务演进</div>
+                        <h3 style="font-size:32px;margin-bottom:8px;">验证后的版本变化</h3>
+                        <div class="flow">
+                            <span>历史证据</span><span>候选</span><span>验证</span><span>新版本</span><span>Task B</span>
+                        </div>
+                        <p class="col-foot">验证后的版本变化，才影响未来任务。</p>
+                    </article>
+                </div>
+                <p class="callout reveal d4">EvoTeam 要验证：改变组织策略是否带来可重复的收益。</p>
+                <p class="footer-src">Retry 有价值，但是对照基线。组织变更本身也不保证收益。</p>
+                <div class="page-no">02 / 18</div>
+            </section>
+
+            <!-- 03 MAIN TASK -->
+            <section class="slide paper-grid" data-slide="03">
+                <h2 class="page-title">从可校验的项目计划开始</h2>
+                <div class="source-tag mech">机制示意</div>
+                <div class="scene-grid">
+                    <div class="list-row reveal d1">
+                        <div>工作项</div><div>依赖</div><div>人员技能</div>
+                        <div>可用时间</div><div>期限</div><div>预算</div>
+                    </div>
+                    <div class="panel gantt reveal d2">
+                        <div class="kicker">示例排期，非新实验结果</div>
+                        <div class="gantt-row">
+                            <div class="gantt-lab">Alice / design　[0, 2)</div>
+                            <div class="bar-track"><div class="bar" style="left:0;width:33%;">2h</div></div>
+                        </div>
+                        <div class="gantt-row">
+                            <div class="gantt-lab">Alice / build　[2, 6)</div>
+                            <div class="bar-track"><div class="bar" style="left:33%;width:67%;">4h</div></div>
+                        </div>
+                        <p style="color:var(--muted);font-size:18px;">费率 100 分/时，人工 600 分，预算 800 分。相邻区间不重叠。</p>
+                    </div>
+                    <div class="check-list reveal d3">
+                        <div>✓ 完整性</div>
+                        <div>✓ 资源冲突</div>
+                        <div>✓ 依赖顺序</div>
+                        <div>✓ 工期</div>
+                        <div>✓ 预算</div>
+                    </div>
+                </div>
+                <p class="callout reveal d4">计划是否满足硬约束，可以由独立规则检查器复核。</p>
+                <p class="footer-src">来源：examples/project_planning/task.json、plan.json</p>
+                <div class="page-no">03 / 18</div>
+            </section>
+
+            <!-- 04 STRATEGY OBJECT -->
+            <section class="slide paper-grid" data-slide="04">
+                <h2 class="page-title">我们演进的是 Strategy</h2>
+                <div class="source-tag impl">已实现＋设计边界</div>
+                <div class="panel strategy-wrap reveal d1">
+                    <div class="kicker" style="color:var(--current);">Strategy</div>
+                    <div class="strategy-grid">
+                        <div>AgentConfig</div>
+                        <div>Topology</div>
+                        <div>OrchestrationPolicy</div>
+                        <div>版本信息</div>
+                    </div>
+                </div>
+                <div class="side-stack">
+                    <div class="panel reveal d2">
+                        <div class="kicker">Role：稳定职责</div>
+                        <div class="roles">
+                            <span class="on">Planner</span>
+                            <span class="on">Executor</span>
+                            <span class="on">Critic</span>
+                            <span>Researcher</span>
+                            <span>Analyst</span>
+                            <span>Writer</span>
+                            <span>Verifier · 候选可启用</span>
+                        </div>
+                    </div>
+                    <div class="panel reveal d3">
+                        <div class="kicker">AgentInstance：本次运行状态</div>
+                        <p style="font-size:22px;line-height:1.45;">Team = 本次启用实例与协作关系</p>
+                    </div>
+                </div>
+                <p class="callout reveal d4">Role 固定；配置可版本化；运行状态按 Run 隔离。</p>
+                <p class="footer-src">同一角色可以有不同配置。返工增加实例次数，不等于发现新角色。</p>
+                <div class="page-no">04 / 18</div>
+            </section>
+
+            <!-- 05 TWO LOOPS -->
+            <section class="slide paper-grid" data-slide="05">
+                <h2 class="page-title">在线执行与离线演进分开运行</h2>
+                <div class="source-tag impl">已实现 / 部分能力继续完善</div>
+                <div class="chain-online reveal d1">
+                    <div class="chip online">Task</div>
+                    <div class="chip online">Current</div>
+                    <div class="chip online">Orchestrator</div>
+                    <div class="chip online">Team</div>
+                    <div class="chip online">Evaluator</div>
+                    <div class="chip online">SealedRun</div>
+                </div>
+                <div class="chain-offline reveal d2">
+                    <div class="chip offline">Experience / Monitor</div>
+                    <div class="chip offline">Trigger</div>
+                    <div class="chip offline">Attribution / Mutation</div>
+                    <div class="chip offline">Validator</div>
+                    <div class="chip offline">Gate</div>
+                    <div class="chip offline">版本决定</div>
+                </div>
+                <div class="sdk-row reveal d3" style="width:1015px;">
+                    <div class="chip sdk">Domain</div>
+                    <div class="chip sdk">RuntimeProtocol</div>
+                    <div class="chip sdk">OpenJiuwen Adapter</div>
+                    <div class="chip sdk">openJiuwen</div>
+                </div>
+                <div class="panel bound-note reveal d4">
+                    业务 Agent 不直接互调。<br>普通 Run 不写回当前策略。
+                </div>
+                <p class="footer-src">来源：ARCHITECTURE §5 / §7 / §9、composition.py。六层是职责划分，不是六个微服务。</p>
+                <div class="page-no">05 / 18</div>
+            </section>
+
+            <!-- 06 ONLINE CAPABILITY -->
+            <section class="slide paper-grid" data-slide="06">
+                <h2 class="page-title">已有能力：任务执行、校验与封存</h2>
+                <div class="source-tag wait">待补截图；已有代码</div>
+                <div class="placeholder shot-box reveal d1">
+                    <div class="kicker">S01 · 待补证据</div>
+                    <p style="font-size:32px;font-weight:600;color:var(--ink);max-width:820px;">待补：真实运行详情截图；包含 Run ID、Strategy、规则评价、Token、状态</p>
+                    <p style="margin-top:16px;font-size:20px;">无前端时可用 CLI 结果节选，标签写“CLI结果”。不拿拟议 UI 冒充现有前端。</p>
+                </div>
+                <div class="cap-stack">
+                    <div class="panel reveal d2">① 三角色固定起点</div>
+                    <div class="panel reveal d3">② 独立规则检查</div>
+                    <div class="panel reveal d4">③ 失败、超时、取消留档</div>
+                </div>
+                <p class="footer-src">[Run ID] / [代码提交或历史批次] / [数据来源]</p>
+                <div class="page-no">06 / 18</div>
+            </section>
+
+            <!-- 07 MONITOR -->
+            <section class="slide paper-grid" data-slide="07">
+                <h2 class="page-title">有重复证据，才考虑改变</h2>
+                <div class="source-tag mech">机制示意</div>
+                <div class="obs-grid">
+                    <div class="panel run-files reveal d1">
+                        <div class="record">Run<br><span class="badge ok">success</span></div>
+                        <div class="record">Run<br><span class="badge fail">failure · 同码</span></div>
+                        <div class="record">Run<br><span class="badge fail">failure · 同码</span></div>
+                        <div class="record">Run<br><span class="badge ok">success</span></div>
+                        <div class="record">Run<br><span class="badge fail">failure · 同码</span></div>
+                        <div class="record">Run<br><span class="badge ok">success</span></div>
+                        <div class="record">Run<br><span class="badge fail">failure · 同码</span></div>
+                        <div class="record">Run<br><span class="badge wait">观察中</span></div>
+                    </div>
+                    <div class="panel reveal d2" style="padding:28px;">
+                        <div class="kicker">Experience</div>
+                        <p style="font-size:24px;line-height:1.7;">支持样本<br>成功反例<br>适用范围</p>
+                    </div>
+                    <div class="panel reveal d3" style="padding:28px;">
+                        <div class="kicker">Monitor</div>
+                        <p style="font-size:24px;margin:18px 0;"><span class="badge wait">继续观察</span></p>
+                        <p style="font-size:24px;"><span class="badge cand">产生 Trigger</span></p>
+                    </div>
+                </div>
+                <p class="callout reveal d4">按策略版本、任务范围和评价协议观察；样本量与冷却由 Policy 约束。</p>
+                <p class="footer-src">当前只启用 repeated_failure。阈值 1 是诊断配置，不是校准后的正式触发能力。</p>
+                <div class="page-no">07 / 18</div>
+            </section>
+
+            <!-- 08 ATTRIBUTION -->
+            <section class="slide paper-grid" data-slide="08">
+                <h2 class="page-title">区分错误产生与实际漏检</h2>
+                <div class="source-tag mech">机制示意，规则已实现</div>
+                <div class="attr-grid">
+                    <article class="panel reveal d1">
+                        <div class="kicker">左例 · Origin / Control</div>
+                        <div class="path">
+                            <div>Executor 产生冲突计划</div>
+                            <div>Critic「通过」</div>
+                            <div>独立检查发现错误</div>
+                        </div>
+                        <p><span class="badge fail">Origin：产物错误</span></p>
+                        <p style="margin-top:10px;"><span class="badge wait">Control：实际漏检</span></p>
+                    </article>
+                    <article class="panel reveal d2">
+                        <div class="kicker">右例 · 已指出问题</div>
+                        <div class="path">
+                            <div>Executor 产生错误计划</div>
+                            <div>Critic「指出错误」</div>
+                            <div>独立检查仍失败</div>
+                        </div>
+                        <p style="font-size:22px;line-height:1.45;margin-top:8px;">已指出问题，不认定漏检。</p>
+                    </article>
+                </div>
+                <p class="callout reveal d4">归因读取最终产物与实际审查；证据不足保留不确定性。</p>
+                <p class="footer-src">来源：attribution.py、test_attribution_review.py。旧 confidence=0.8 不作为当前正确归因。</p>
+                <div class="page-no">08 / 18</div>
+            </section>
+
+            <!-- 09 CANDIDATES -->
+            <section class="slide paper-grid" data-slide="09">
+                <h2 class="page-title">同一个问题，比较受约束候选</h2>
+                <div class="source-tag impl">分块标注</div>
+                <div class="cand-grid">
+                    <article class="panel reveal d1">
+                        <div class="kicker" style="color:var(--current);">A · 已实现</div>
+                        <h3 style="font-size:30px;margin-bottom:14px;">Prompt 更新</h3>
+                        <p style="font-family:var(--font-mono);font-size:18px;background:#F3F7F6;padding:14px;border-radius:10px;">executor@v0 → v1-resource-check</p>
+                        <p style="margin-top:18px;font-size:22px;line-height:1.45;">只改登记模板引用</p>
+                    </article>
+                    <article class="panel reveal d2">
+                        <div class="kicker" style="color:var(--current);">B · 已实现</div>
+                        <h3 style="font-size:30px;margin-bottom:14px;">新增 Verifier</h3>
+                        <p style="font-size:22px;line-height:1.6;margin:12px 0;">E → V → C<br>同时保留 E → C</p>
+                        <p style="font-size:22px;">固定 Role 与能力边界</p>
+                    </article>
+                    <article class="panel reveal d3" style="border-style:dashed;">
+                        <div class="kicker" style="color:var(--pending);">C · 后续</div>
+                        <h3 style="font-size:30px;margin-bottom:14px;">Tool Policy</h3>
+                        <p style="font-size:22px;line-height:1.45;">既有 constraint_checker 的受控使用</p>
+                        <p style="margin-top:16px;font-size:18px;color:var(--muted);">不得画成已调用工具</p>
+                    </article>
+                </div>
+                <p class="callout reveal d4">候选来自证据；同一问题的改法需要比较，不能预设增加 Agent 最好。</p>
+                <p class="footer-src">当前运行 Tool 调用为零。结构候选是有限形状，不支持任意拓扑或自动创造 Role。</p>
+                <div class="page-no">09 / 18</div>
+            </section>
+
+            <!-- 10 GATE -->
+            <section class="slide paper-grid" data-slide="10">
+                <h2 class="page-title">Gate 决定是否值得上线</h2>
+                <div class="source-tag impl">基本规则已实现，统计验收待补</div>
+                <div class="gate-grid">
+                    <div class="panel reveal d1">
+                        <div class="iso-box"><strong>History</strong><br><span style="color:var(--muted);">线上观察窗口</span></div>
+                        <div class="iso-box"><strong>Validation</strong><br>Current ↔ Candidate</div>
+                        <div class="iso-box"><strong>Final Test</strong><br><span style="color:var(--muted);">不用于选候选</span></div>
+                    </div>
+                    <div class="panel reveal d2">
+                        <div class="rule-item">对照配置一致</div>
+                        <div class="rule-item">收益满足规则</div>
+                        <div class="rule-item">受限成本已知</div>
+                        <div class="rule-item">配对样本达到登记门槛</div>
+                    </div>
+                    <div class="panel reveal d3">
+                        <div class="state-pill" style="background:rgba(24,127,114,0.12);color:var(--current);">PASS</div>
+                        <div class="state-pill" style="background:rgba(183,74,67,0.12);color:var(--fail);">FAIL</div>
+                        <div class="state-pill" style="background:rgba(168,120,35,0.14);color:var(--pending);">CONTINUE_SAMPLING</div>
+                        <p style="font-size:18px;color:var(--muted);">由生命周期服务处理</p>
+                    </div>
+                </div>
+                <p class="callout reveal d4">验证 Run 不进入线上 Monitor。数据内容隔离、逐题负迁移与统计置信仍在下一轮计划。</p>
+                <p class="footer-src">minimum_paired_runs 至少两对只是结构下限，不是显著性保证。</p>
+                <div class="page-no">10 / 18</div>
+            </section>
+
+            <!-- 11 DEMO SLOT -->
+            <section class="slide paper-grid" data-slide="11">
+                <h2 class="page-title">演示：从一次 Run 追到 Gate</h2>
+                <div class="source-tag wait">待补真实回放</div>
+                <div class="placeholder demo-main reveal d1">
+                    <div class="kicker">S02–S05 · 待补证据</div>
+                    <p style="font-size:32px;font-weight:600;color:var(--ink);max-width:900px;">嵌入 60–90 秒静音演示录像或一张主界面截图</p>
+                    <p style="margin-top:16px;font-size:20px;">保留播放起点和当前选中的 Run。回放不会再调用模型。</p>
+                </div>
+                <div class="demo-steps">
+                    <div class="panel reveal d2">1 看任务结果</div>
+                    <div class="panel reveal d3">2 追踪节点与消息</div>
+                    <div class="panel reveal d4">3 比较候选差异</div>
+                    <div class="panel reveal d5">4 核对 Gate 与 Current</div>
+                </div>
+                <p class="footer-src">记录来源：[批次/Run/Evolution ID]；展示方式：[历史回放/当前库]</p>
+                <div class="page-no">11 / 18</div>
+            </section>
+
+            <!-- 12 HISTORICAL RESULTS -->
+            <section class="slide paper-grid" data-slide="12">
+                <h2 class="page-title">当前实测：成功运行，也拒绝候选</h2>
+                <div class="source-tag hist">历史实测｜2026-09-09</div>
+                <div class="result-grid">
+                    <div class="panel reveal d1" style="padding:24px 26px;">
+                        <div class="kicker">不同任务，不作算法优劣对照</div>
+                        <table>
+                            <thead>
+                                <tr><th>任务</th><th>规则结果</th><th>Tokens</th><th>耗时</th><th>返工</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>复杂可行任务</td>
+                                    <td>通过，0 个硬约束错误</td>
+                                    <td>4,879</td>
+                                    <td>9.180 秒</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr>
+                                    <td>不可行诊断任务</td>
+                                    <td>未通过，1 个工期错误</td>
+                                    <td>5,077</td>
+                                    <td>12.622 秒</td>
+                                    <td>1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="panel reveal d2" style="padding:24px 26px;">
+                        <div class="kicker">候选比较 · E03</div>
+                        <table>
+                            <thead>
+                                <tr><th>候选</th><th>Gate</th><th>理由</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Prompt Candidate</td>
+                                    <td><span class="badge fail">Reject ×</span></td>
+                                    <td>未满足当时 Gate 的正向收益条件</td>
+                                </tr>
+                                <tr>
+                                    <td>Verifier Candidate</td>
+                                    <td><span class="badge fail">Reject ×</span></td>
+                                    <td>Token 增幅约 17.50%，超过当时 10% 边界</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="margin-top:14px;font-size:18px;color:var(--muted);">promoted=null 表示该记录没有候选晋级。</p>
+                    </div>
+                </div>
+                <p class="callout reveal d4">已跑通受控比较与拒绝路径；尚未证明真实演进带来稳定收益。</p>
+                <p class="footer-src">历史诊断批次：2 个线上 Run、每候选 1 对验证；阈值为演示设置；不同版本未重新实测；金额费用/综合质量未提供。来源 E01/E02/E03。</p>
+                <div class="page-no">12 / 18</div>
+            </section>
+
+            <!-- 13 STATUS -->
+            <section class="slide paper-grid" data-slide="13">
+                <h2 class="page-title">核心流程已有实现，验证与展示继续补齐</h2>
+                <div class="source-tag impl">按当前代码核对</div>
+                <div class="prog-grid">
+                    <div class="panel reveal d1">
+                        <div class="kicker" style="color:var(--current);">已有</div>
+                        <ul>
+                            <li>在线链路 / 封存</li>
+                            <li>重复失败观察</li>
+                            <li>Prompt / Verifier 候选</li>
+                            <li>基本 Gate 与生命周期</li>
+                            <li>本地 API</li>
+                        </ul>
+                    </div>
+                    <div class="panel reveal d2">
+                        <div class="kicker" style="color:var(--pending);">下一轮</div>
+                        <ul>
+                            <li>数据库升级</li>
+                            <li>内容分区</li>
+                            <li>逐题指标</li>
+                            <li>只读查询和可视化</li>
+                            <li>可信基线</li>
+                        </ul>
+                    </div>
+                    <div class="panel reveal d3">
+                        <div class="kicker" style="color:var(--candidate);">完整交付继续验证</div>
+                        <ul>
+                            <li>Tool / 消融</li>
+                            <li>自动稳定 / 回滚</li>
+                            <li>三类实验</li>
+                            <li>真实未来任务影响</li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="callout reveal d4">代码存在、测试通过和效果成立，是不同的验收层次。</p>
+                <p class="footer-src">当前尚无前端，不因本页画了界面就把可视化记为已完成。</p>
+                <div class="page-no">13 / 18</div>
+            </section>
+
+            <!-- 14 CLOSE -->
+            <section class="slide slide-dark" data-slide="14">
+                <h2 class="page-title" style="color:#fff;">下一步：把机制验证变成可信实验</h2>
+                <div class="source-tag" style="background:transparent;color:#B7C7C4;border-color:rgba(255,255,255,0.28);">分工与目标</div>
+                <div class="next-grid">
+                    <div class="ledger-card current reveal d1">
+                        <div class="kicker" style="color:#7FD1C6;">A：核心与验证</div>
+                        <p style="font-size:30px;line-height:1.5;">升级 / 隔离 → 逐题证据 → 真实比较</p>
+                    </div>
+                    <div class="ledger-card candidate reveal d2">
+                        <div class="kicker" style="color:#C8B8E8;">B：展示与表达</div>
+                        <p style="font-size:30px;line-height:1.5;">只读接口 / 页面 → 真实截图 → PPT / 演示</p>
+                    </div>
+                </div>
+                <p class="reveal d3" style="position:absolute;left:115px;top:560px;width:1690px;font-size:28px;color:#E7EEEB;">负责人：审查、实验规则确认与验收。</p>
+                <p class="reveal d4" style="position:absolute;left:115px;top:720px;width:1450px;font-size:32px;line-height:1.4;color:#fff;">每一次改变，都能回答：为何触发、改了哪里、依据是什么。</p>
+                <div class="qa reveal d5">Q&amp;A</div>
+                <div class="page-no">14 / 18</div>
+            </section>
+
+            <!-- B01 LIFECYCLE -->
+            <section class="slide paper-grid" data-slide="B01">
+                <h2 class="page-title">备份：生命周期与完整离线链</h2>
+                <div class="source-tag impl">已实现状态操作 / 自动规则未完成</div>
+                <div class="panel life-top reveal d1">
+                    <div class="kicker">离线链</div>
+                    <div class="chain-offline" style="position:static;width:auto;height:auto;margin-top:18px;">
+                        <div class="chip offline">Experience</div>
+                        <div class="chip offline">Monitor</div>
+                        <div class="chip offline">Manager</div>
+                        <div class="chip offline">Attribution</div>
+                        <div class="chip offline">Mutation</div>
+                        <div class="chip offline">Validator</div>
+                        <div class="chip offline">Improvement</div>
+                        <div class="chip offline">Gate</div>
+                    </div>
+                </div>
+                <div class="life-bot reveal d2">
+                    <div class="panel" style="padding:22px;">
+                        <strong>Promote / Reject</strong>
+                        <p style="margin-top:10px;font-size:20px;color:var(--muted);">Reject 拒绝尚未上线的候选。</p>
+                    </div>
+                    <div class="panel" style="padding:22px;">
+                        <strong>Stable / Reopen</strong>
+                        <p style="margin-top:10px;font-size:20px;color:var(--muted);">稳定后停止主动搜索；新证据达阈值才重开。</p>
+                    </div>
+                    <div class="panel" style="padding:22px;">
+                        <strong>Rollback</strong>
+                        <p style="margin-top:10px;font-size:20px;color:var(--muted);">撤下已上线退化版本，恢复可用历史版本。自动检测规则未完成。</p>
+                    </div>
+                </div>
+                <p class="footer-src">回答：怎么停止？拒绝和回滚区别？</p>
+                <div class="page-no">15 / 18</div>
+            </section>
+
+            <!-- B02 EXPERIMENTS -->
+            <section class="slide paper-grid" data-slide="B02">
+                <h2 class="page-title">备份：实验设计</h2>
+                <div class="source-tag wait">规划中，未全部执行</div>
+                <div class="exp-grid">
+                    <div class="panel reveal d1" style="padding:28px;">
+                        <div class="kicker">对照</div>
+                        <p style="font-size:24px;line-height:1.7;">三分区：History / Validation / Final Test<br>固定多 Agent / Retry / Prompt / Tool / Structure / Full</p>
+                    </div>
+                    <div class="panel reveal d2" style="padding:28px;">
+                        <div class="kicker">指标</div>
+                        <p style="font-size:24px;line-height:1.7;">成功率分母<br>Token / 延迟<br>离线成本<br>子类退化（未做项标规划）</p>
+                    </div>
+                </div>
+                <p class="footer-src">回答：怎样证明不是只多花钱或只靠 Retry？</p>
+                <div class="page-no">16 / 18</div>
+            </section>
+
+            <!-- B03 ENGINEERING -->
+            <section class="slide paper-grid" data-slide="B03">
+                <h2 class="page-title">备份：工程证据</h2>
+                <div class="source-tag impl">代码里程碑 677809a</div>
+                <div class="eng-grid">
+                    <div class="panel reveal d1" style="padding:28px;">
+                        <div class="kicker">审查后检查</div>
+                        <p style="font-size:42px;font-weight:700;margin:18px 0 8px;">106 passed</p>
+                        <p style="font-size:24px;color:var(--muted);">1 skipped</p>
+                        <ul style="margin-top:28px;font-size:22px;line-height:1.6;">
+                            <li>重复消费</li>
+                            <li>取消传播</li>
+                            <li>归因与 Gate 回归</li>
+                        </ul>
+                    </div>
+                    <div class="placeholder reveal d2">
+                        <div class="kicker">S07 · 待补证据</div>
+                        <p style="font-size:28px;font-weight:600;color:var(--ink);">预留最近终端截图。更新时数字随截图一起换。</p>
+                    </div>
+                </div>
+                <p class="footer-src">回答：怎么保证边界不被绕过？跳过外部模型冒烟；保留上游弃用警告。</p>
+                <div class="page-no">17 / 18</div>
+            </section>
+
+            <!-- B04 FAQ -->
+            <section class="slide paper-grid" data-slide="B04">
+                <h2 class="page-title">备份：常见问答</h2>
+                <div class="source-tag mech">边界说明</div>
+                <div class="faq">
+                    <div class="panel reveal d1">
+                        <strong>为什么 openJiuwen？</strong>
+                        <p style="margin-top:8px;font-size:22px;">运行能力由 SDK 承担，组织治理由 EvoTeam 负责。</p>
+                    </div>
+                    <div class="panel reveal d2">
+                        <strong>是真自演进吗？</strong>
+                        <p style="margin-top:8px;font-size:22px;">当前有候选验证治理机制，真实收益仍待证据。</p>
+                    </div>
+                    <div class="panel reveal d3">
+                        <strong>为什么不是每次组队？</strong>
+                        <p style="margin-top:8px;font-size:22px;">保持固定可复现起点与版本因果路径。</p>
+                    </div>
+                    <div class="panel reveal d4">
+                        <strong>增加 Agent 一定更好？</strong>
+                        <p style="margin-top:8px;font-size:22px;">不预设。按对照 Gate 决定，允许较便宜的 Tool Policy 胜出。</p>
+                    </div>
+                </div>
+                <p class="footer-src">默认不播放。主讲 12–15 分钟用 01–14。</p>
+                <div class="page-no">18 / 18</div>
+            </section>
+
+        </main>
+    </div>
+
+    <nav class="deck-controls" aria-label="幻灯片控制">
+        <button type="button" id="prevBtn">←</button>
+        <span id="chromePage">01 / 18</span>
+        <button type="button" id="nextBtn">→</button>
+    </nav>
+
+    <script>
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll(".slide");
+                this.currentSlide = 0;
+                this.stage = document.getElementById("deckStage");
+                this.pageChrome = document.getElementById("chromePage");
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupButtons();
+                this.showSlide(0);
+            }
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener("resize", scale);
+            }
+            setupKeyboardNav() {
+                document.addEventListener("keydown", (e) => {
+                    if (e.target && e.target.getAttribute("contenteditable")) return;
+                    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) {
+                        e.preventDefault();
+                        this.showSlide(this.currentSlide + 1);
+                    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) {
+                        e.preventDefault();
+                        this.showSlide(this.currentSlide - 1);
+                    } else if (e.key === "Home") {
+                        this.showSlide(0);
+                    } else if (e.key === "End") {
+                        this.showSlide(this.slides.length - 1);
+                    }
+                });
+            }
+            setupTouchNav() {
+                let x0 = null;
+                this.stage.addEventListener("touchstart", (e) => { x0 = e.changedTouches[0].screenX; }, { passive: true });
+                this.stage.addEventListener("touchend", (e) => {
+                    if (x0 === null) return;
+                    const dx = e.changedTouches[0].screenX - x0;
+                    if (Math.abs(dx) > 50) this.showSlide(this.currentSlide + (dx < 0 ? 1 : -1));
+                    x0 = null;
+                }, { passive: true });
+            }
+            setupWheelNav() {
+                let locked = false;
+                window.addEventListener("wheel", (e) => {
+                    if (locked) return;
+                    if (Math.abs(e.deltaY) < 40) return;
+                    locked = true;
+                    this.showSlide(this.currentSlide + (e.deltaY > 0 ? 1 : -1));
+                    setTimeout(() => { locked = false; }, 450);
+                }, { passive: true });
+            }
+            setupButtons() {
+                document.getElementById("prevBtn").addEventListener("click", () => this.showSlide(this.currentSlide - 1));
+                document.getElementById("nextBtn").addEventListener("click", () => this.showSlide(this.currentSlide + 1));
+            }
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                this.slides.forEach((slide, i) => {
+                    slide.classList.toggle("active", i === this.currentSlide);
+                    slide.classList.toggle("visible", i === this.currentSlide);
+                });
+                const n = String(this.currentSlide + 1).padStart(2, "0");
+                const total = String(this.slides.length).padStart(2, "0");
+                this.pageChrome.textContent = `${n} / ${total}`;
+            }
+        }
+
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.key = "evoteam-presentation-edits-v2";
+                this.toggle = document.getElementById("editToggle");
+            }
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle("editing", this.isActive);
+                this.toggle.classList.toggle("active", this.isActive);
+                document.querySelectorAll(".slide h1, .slide h2, .slide h3, .slide p, .slide td, .slide th, .slide li, .slide .chip, .slide .callout, .slide .cover-meta, .slide .cover-lede, .slide .cover-sub").forEach((el) => {
+                    el.setAttribute("contenteditable", this.isActive ? "true" : "false");
+                });
+            }
+            save() {
+                localStorage.setItem(this.key, document.getElementById("deckStage").innerHTML);
+            }
+            restore() {
+                const saved = localStorage.getItem(this.key);
+                if (saved) document.getElementById("deckStage").innerHTML = saved;
+            }
+        }
+
+        const deck = new SlidePresentation();
+        const editor = new InlineEditor();
+        document.getElementById("editToggle").addEventListener("click", () => editor.toggleEditMode());
+        const hotzone = document.querySelector(".edit-hotzone");
+        const editToggle = document.getElementById("editToggle");
+        let hideTimeout = null;
+        const showToggle = () => { clearTimeout(hideTimeout); editToggle.classList.add("show"); };
+        const hideToggle = () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove("show");
+            }, 400);
+        };
+        hotzone.addEventListener("mouseenter", showToggle);
+        hotzone.addEventListener("mouseleave", hideToggle);
+        editToggle.addEventListener("mouseenter", showToggle);
+        editToggle.addEventListener("mouseleave", hideToggle);
+        hotzone.addEventListener("click", () => editor.toggleEditMode());
+        document.addEventListener("keydown", (e) => {
+            if ((e.key === "e" || e.key === "E") && !e.target.getAttribute("contenteditable")) {
+                editor.toggleEditMode();
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+                e.preventDefault();
+                editor.save();
+            }
+        });
+    </script>
+</body>
+</html>
