@@ -28,9 +28,9 @@ EvoTeam 是基于 openJiuwen Core 的经验驱动多智能体组织演进系统�
 | [架构](docs/ARCHITECTURE.md) | 术语、六层职责、两个闭环、模块与数据契约 |
 | [决策](docs/DECISIONS.md) | 已冻结决策、来源与仍需校准的参数 |
 | [实验](docs/EXPERIMENTS.md) | 数据隔离、对照、归因、Gate 与可复现要求 |
-| [下一轮实施计划](docs/NEXT_STEPS.md) | 数据库升级、数据隔离、逐任务验证与真实基线的执行任务 |
+| [并行开发与交付计划](docs/NEXT_STEPS.md) | 两位组员分工、核心与展示任务、依赖和验收 |
 | [路线图](docs/ROADMAP.md) | P0–P5 实施顺序与阶段验收 |
-| [汇报规划](docs/PRESENTATION_PLAN.md) | 面向最终方案的汇报结构与证据要求 |
+| [PPT 总体设计](docs/PRESENTATION_PLAN.md) | 逐页文案、布局、样式、讲稿与截图素材槽位 |
 | [相关工作](docs/RELATED_WORK.md) | 既有参考文献入口与后续核验范围 |
 | [Demo 测试报告](docs/DEMO_TEST_REPORT.md) | 初代测试记录与最新 DeepSeek 真实回归 |
 | [版本对比](docs/VERSION_COMPARISON.md) | main 与组员分支增量、审查修复、当前进展及后续次序 |
