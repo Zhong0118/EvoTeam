@@ -21,3 +21,5 @@ build/
 # openJiuwen runtime logs can include task content
 logs/
 runs/**/*.log
+
+node_modules/
