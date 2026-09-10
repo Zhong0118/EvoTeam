@@ -91,10 +91,10 @@ TraceEventView 延续已有事件身份与因果字段；按事件类型白名�
 
 **产物：** 上述 SubmitExecution、ExecutionView、增量事件信封的 Pydantic/Zod Schema；成功、评价失败、超时、取消、中断、缺封存与断线恢复样例。Domain Task/PlanningInput 复用既有模型。
 
-- [ ] 先写状态与输入反例：缺必需约束、非法依赖、错误状态、未知用量、completed 与 success=false 合法。
-- [ ] 运行 `uv run pytest tests/test_execution_contracts.py`，确认接口尚未实现时失败；实现 Schema 后通过。
-- [ ] 用相同 JSON 样例验证 Python/TypeScript 契约，执行 `npm --prefix frontend test -- src/data/executions.test.ts`。
-- [ ] 将契约与本节字段核对后提交；后续任务不得自行改字段名或把 job status 当评价结果。
+- [x] 先写状态与输入反例：缺必需约束、非法依赖、错误状态、未知用量、completed 与 success=false 合法。
+- [x] 运行 `uv run pytest tests/test_execution_contracts.py`，确认接口尚未实现时失败；实现 Schema 后通过。
+- [x] 用相同 JSON 样例验证 Python/TypeScript 契约，执行 `npm --prefix frontend test -- src/data/executions.test.ts`。
+- [x] 将契约与本节字段核对后提交；后续任务不得自行改字段名或把 job status 当评价结果。
 
 ## F1：持久化作业与后台执行
 
@@ -170,7 +170,7 @@ E1/E2 的详细接口在轮到该任务时基于届时核心实现补入本文�
 
 ## 5. 交付状态
 
-- [ ] F0 契约与共同样例
+- [x] F0 契约与共同样例（`evoteam/execution/models.py`、`frontend/src/data/executions.ts` 与共用样例 `frontend/src/fixtures/execution-samples.json`；端点实现仍在 F1/F2）
 - [ ] F1 持久化后台执行与取消/中断边界
 - [ ] F2 运行中状态与增量事件
 - [ ] F3 任务输入首页
