@@ -19,6 +19,7 @@ from evoteam.domain.evolution import (
     ValidationPlan,
     ValidationResult,
 )
+from evoteam.domain.experience import AttributionClaim, AttributionKind, AttributionReport
 from evoteam.domain.run import RunPurpose, RunStatus, SealedRun
 from evoteam.domain.strategy import Strategy, StrategyStatus
 from evoteam.domain.task import Task
@@ -148,6 +149,31 @@ def failure_evidence(current: Strategy) -> tuple[SealedRun, ...]:
     return tuple(result)
 
 
+class FixedEvidenceAttributor(OutcomeAttributor):
+    """控制器测试的预置归因；实际快照归因由 test_attribution_review 覆盖。"""
+
+    async def analyze_failure(self, runs) -> AttributionReport:
+        return AttributionReport(
+            report_id="fixture-attribution",
+            strategy=runs[0].strategy,
+            task_scope=runs[0].task_scope,
+            needs_more_evidence=False,
+            claims=tuple(
+                AttributionClaim(
+                    kind=kind,
+                    target=target,
+                    explanation="预置故障定位",
+                    confidence=1,
+                    evidence_refs=tuple(f"run:{r.run_id}" for r in runs),
+                )
+                for kind, target in (
+                    (AttributionKind.ORIGIN, "executor"),
+                    (AttributionKind.CONTROL, "critic"),
+                )
+            ),
+        )
+
+
 @pytest.mark.asyncio
 async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
     storage = SQLiteStorage(f"sqlite:///{tmp_path / 'evolution.db'}")
@@ -168,7 +194,7 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
         InMemoryValidationDatasets({("held-out", "1"): (task,)}),
     )
     manager = EvolutionManager(
-        attributor=OutcomeAttributor(),
+        attributor=FixedEvidenceAttributor(),
         generator=CandidateGenerator(),
         validator=validator,
         gate=ValidationGate(),
@@ -206,12 +232,13 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
         ValidationPlan(
             dataset_ref=AssetRef(id="held-out", version="1"),
             evaluator_ref=AssetRef(id="project-planning-rules", version="1"),
-            repeats=1,
-            seeds=(7,),
+            repeats=2,
+            seeds=(7, 8),
         ),
         GatePolicy(
             ref=AssetRef(id="gate", version="1"),
             minimum_quality_gain=0,
+            minimum_paired_runs=2,
             maximum_quality_regression=0,
             maximum_token_increase=0,
             maximum_latency_increase=1000,
@@ -231,6 +258,8 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
     ).metadata.status == StrategyStatus.RETIRED
     assert await ports.evolutions.get_record(record.evolution_id) == record
     assert len(record.validation_refs) == 1
+    validation = await ports.evolutions.get_validation(record.validation_refs[0])
+    assert "seed_not_applied" in validation.model_dump().get("limitations", ())
     assert (
         len(
             await ports.runs.recent_runs(
@@ -240,7 +269,7 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
                 limit=10,
             )
         )
-        == 1
+        == 2
     )
     assert (
         await ports.runs.recent_runs(
@@ -318,8 +347,12 @@ class ControlledValidator:
             current=current.metadata.ref,
             candidate=candidate.metadata.ref,
             plan=plan,
-            current_run_ids=(f"current-{candidate.metadata.ref.version}",),
-            candidate_run_ids=(f"candidate-{candidate.metadata.ref.version}",),
+            current_run_ids=tuple(
+                f"current-{candidate.metadata.ref.version}-{i}" for i in range(2)
+            ),
+            candidate_run_ids=tuple(
+                f"candidate-{candidate.metadata.ref.version}-{i}" for i in range(2)
+            ),
             current_metrics=RunMetrics(
                 success=False, hard_constraint_errors=1, tokens=100, latency_seconds=2
             ),
@@ -340,7 +373,7 @@ async def test_multiple_candidates_select_one_and_persist_full_artifacts(tmp_pat
     current = configured_current()
     await ports.strategies.save(current)
     manager = EvolutionManager(
-        attributor=OutcomeAttributor(),
+        attributor=FixedEvidenceAttributor(),
         generator=CandidateGenerator(),
         validator=ControlledValidator(),
         gate=ValidationGate(),
@@ -373,8 +406,8 @@ async def test_multiple_candidates_select_one_and_persist_full_artifacts(tmp_pat
     plan = ValidationPlan(
         dataset_ref=AssetRef(id="held-out", version="1"),
         evaluator_ref=AssetRef(id="project-planning-rules", version="1"),
-        repeats=1,
-        seeds=(1,),
+        repeats=2,
+        seeds=(1, 2),
     )
     record = await manager.evolve(
         trigger,
@@ -385,6 +418,7 @@ async def test_multiple_candidates_select_one_and_persist_full_artifacts(tmp_pat
         GatePolicy(
             ref=AssetRef(id="gate", version="multi"),
             minimum_quality_gain=0,
+            minimum_paired_runs=2,
             maximum_quality_regression=0,
             maximum_token_increase=0,
             maximum_latency_increase=0,

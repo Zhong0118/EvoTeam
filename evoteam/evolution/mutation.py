@@ -44,6 +44,7 @@ class CandidateGenerator:
                 "mutation",
                 [
                     current.metadata.ref.model_dump(),
+                    attribution.report_id,
                     claim.target,
                     replacement.model_dump(),
                     claim.evidence_refs,
@@ -62,9 +63,13 @@ class CandidateGenerator:
             )
             if len(proposals) >= policy.max_candidates:
                 break
-        if len(proposals) < policy.max_candidates and any(
-            claim.kind == AttributionKind.CONTROL and claim.target == "critic"
-            for claim in attribution.claims
+        if (
+            len(proposals) < policy.max_candidates
+            and not any(agent.role == RoleType.VERIFIER for agent in current.definition.agents)
+            and any(
+                claim.kind == AttributionKind.CONTROL and claim.target == "critic"
+                for claim in attribution.claims
+            )
         ):
             replacement = AssetRef(id="verifier", version="v0")
             load_prompt(replacement)
@@ -75,6 +80,7 @@ class CandidateGenerator:
                         [
                             current.metadata.ref.model_dump(),
                             "add-verifier",
+                            attribution.report_id,
                             replacement.model_dump(),
                         ],
                     ),

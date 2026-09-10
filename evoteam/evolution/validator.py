@@ -1,5 +1,6 @@
 """独立批量实验器；比较执行不等同于 Gate 判定。"""
 
+import asyncio
 from statistics import fmean
 from typing import Protocol
 from uuid import uuid4
@@ -50,6 +51,27 @@ class Validator:
             raise ValueError("Candidate 必须直接来源于本次 Current")
         if plan.evaluator_ref.id != "project-planning-rules":
             raise ValueError("ValidationPlan 的 evaluator_ref 与当前 Evaluator 不匹配")
+        if current.definition.orchestration != candidate.definition.orchestration:
+            raise ValueError("公平比较必须保持总预算与调度参数一致")
+        originals = {agent.node_id: agent for agent in current.definition.agents}
+        for agent in candidate.definition.agents:
+            original = originals.get(agent.node_id)
+            controls = (agent.model_ref, agent.runtime_config, agent.tool_policy, agent.skill_refs)
+            if original is not None:
+                expected = (
+                    original.model_ref,
+                    original.runtime_config,
+                    original.tool_policy,
+                    original.skill_refs,
+                )
+                if controls != expected:
+                    raise ValueError("公平比较不能改变模型、Runtime 或授权能力")
+            elif not any(
+                controls
+                == (source.model_ref, source.runtime_config, source.tool_policy, source.skill_refs)
+                for source in originals.values()
+            ):
+                raise ValueError("公平比较的新增节点必须沿用已登记的模型和能力限制")
         tasks = self.datasets.load(plan.dataset_ref)
         if not tasks:
             raise ValueError("验证集不能为空")
@@ -88,6 +110,8 @@ class Validator:
                     sealed = await self.runs.seal_run(
                         task_copy, run, evaluation, task_scope=task_copy.task_type.value
                     )
+                    if run.status == RunStatus.CANCELLED:
+                        raise asyncio.CancelledError("验证已取消；终止后续模型调用")
                     ids.append(sealed.run_id)
                     metrics.append(sealed.evaluation.metrics)
 
@@ -101,6 +125,7 @@ class Validator:
             candidate_run_ids=tuple(candidate_run_ids),
             current_metrics=self._aggregate(current_metrics),
             candidate_metrics=self._aggregate(candidate_metrics),
+            limitations=("seed_not_applied", "aggregate_metrics_only"),
         )
 
     @staticmethod

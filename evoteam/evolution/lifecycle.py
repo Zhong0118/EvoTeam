@@ -10,6 +10,12 @@ class StrategyLifecycle:
     def __init__(self, store: StrategyStore) -> None:
         self.store = store
 
+    async def abort(self, record: EvolutionRecord) -> None:
+        """取消/陈旧批次只终结未上线候选，保留并发产生的新 Current。"""
+        if record.promoted is not None or record.termination_reason is None:
+            raise ValueError("Abort 需要未晋级的终止记录")
+        await self.store.abort_candidates(record)
+
     async def promote(
         self, candidate: StrategyRef, gate: GateResult, record: EvolutionRecord
     ) -> None:

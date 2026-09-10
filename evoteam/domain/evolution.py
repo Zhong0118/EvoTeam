@@ -86,6 +86,7 @@ class ValidationResult(FrozenModel):
     candidate_run_ids: tuple[str, ...]
     current_metrics: RunMetrics
     candidate_metrics: RunMetrics
+    limitations: tuple[str, ...] = ()
     # 单 Run 指标之外的分布、置信区间与子类统计在 P4 增补。
 
 
@@ -107,3 +108,4 @@ class EvolutionRecord(FrozenModel):
     gate_results: tuple[GateResult, ...] = ()
     promoted: StrategyRef | None = None
     rollback_target: StrategyRef | None = None
+    termination_reason: str | None = None

@@ -1,226 +1,72 @@
-# EvoTeam 最初 GitHub 版本与当前版本对比
+# EvoTeam 分支审查与当前进展
 
-## 1. 对比基线
+## 对比范围
 
-“最初 GitHub 版本”以远端仓库 `main` 历史中的第一个提交为准：
+本次以 `main` 的 `55f68ec` 为基础，审查组员分支 `feature/latest-self-evolution-demo` 的 `8e3cda9`，修复保存在 `codex/review-self-evolution`。这比较的是已有基础功能与本次新增实现，而非把此前 main 的能力计作新增成果。
 
-```text
-commit: f072cebfdd6e19de8f5253f9b8bfd0567cda5b5f
-date:   2026-09-03 15:28:16 +08:00
-title:  初始化仓库和相关文档
-```
+审查日期：2026-09-10。原分支自动化检查为 85 passed、1 skipped；修复后为 106 passed、1 skipped，uv sync、Ruff、格式检查和 Pyright 通过。跳过外部模型冒烟；保留 22 条上游弃用警告。本轮修复作为组员功能分支的后续提交，通过合并流程纳入 main；具体提交和合并记录以 Git 历史为准。
 
-该提交共 14 个文件，主要是项目构想、架构草案、实验设计和开发约束。唯一程序入口 `main.py` 只输出：
+## 组员新增了什么
 
-```text
-Hello from evoteam!
-```
-
-因此，最初版本不是一个可运行的 Multi-Agent Demo，而是一套比较完整的产品与架构设计材料。当前工作目录尚未建立本地 commit，本文通过远端首个 commit 与当前实际文件、测试及运行记录进行比较；不把后来远端提交的功能错误归入最初版本。
-
-## 2. 总体变化
-
-| 维度 | 最初 GitHub 版本 | 当前版本 |
+| 模块 | main 基础 | 新分支增量 |
 | --- | --- | --- |
-| 项目状态 | 产品、架构和实验设计 | 可运行、可评价、可追溯的初代自演进 Demo |
-| 文件规模 | 14 个文件 | 约 140 个当前工作树可见文件 |
-| Python 业务模块 | 无 `evoteam/` 包 | 约 60 个 Python 模块 |
-| Agent 执行 | 无 | DeepSeek + openJiuwen ReActAgent |
-| 多 Agent 协作 | 概念设计 | 受限 3/4 节点 DAG |
-| 任务内修复 | 无 | Critic 驱动 Executor 最多返工一次 |
-| 任务评价 | 实验设计 | 独立确定性项目计划 Evaluator |
-| Trace | 仅提出可观察性原则 | SQLite 事件、消息、来源、用量和封存快照 |
-| 跨任务经验 | 仅概念 | Experience 聚合与成功反例 |
-| 演进触发 | 仅概念 | repeated_failure Monitor Trigger |
-| Candidate | 仅概念 | Prompt 更新和新增 Verifier 两类候选 |
-| 候选比较 | 仅实验方案 | Current/Candidate 配对验证及多候选选择 |
-| 生命周期 | 仅提出可逆要求 | Candidate、Current、Rejected、Promote/Rollback 等状态操作 |
-| 演进证据 | 无 | Attribution、Proposal、Validation、Gate、EvolutionRecord 全量持久化 |
-| API/CLI | 无实际业务入口 | init、run、observe、evolve、FastAPI 基础接口 |
-| 自动化验证 | 无测试目录 | 85 passed，1 skipped |
+| Orchestrator | 固定 Planner → Executor → Critic | 可选唯一 Verifier 的受限 DAG，Critic 驱动的一次返工 |
+| 演进 | 接口与显式触发入口 | Prompt 更新、新增 Verifier、候选物化与多候选选择 |
+| 验证 | 预留 Validator / Gate | 数据集加载、Current/Candidate 执行、指标汇总、Gate 裁决 |
+| 治理 | Strategy 初始登记 | 唯一版本分配，晋级、拒绝、Stable/Reopen/Rollback 状态操作 |
+| 存储 | 在线证据、经验、监控检查点 | 归因、提案、验证和 EvolutionRecord 持久化 |
+| 入口 | init/run/observe 与 demo | evolve 命令、FastAPI 本地接口 |
+| 外部调用证据 | 本地 HTTP 服务验证实际 SDK | 提交了 DeepSeek 任务及 Gate Reject 回归记录 |
 
-## 3. 从“设计文档”到“在线执行闭环”
+新增实现已经连接起离线流程，但状态转换方法存在不等于自动治理实验已经验收，受限结构候选也不等于支持全部 Mutation 白名单。
 
-### 最初版本
+## Standards：工程边界审查
 
-最初版本已经提出了正确的方向：openJiuwen 提供 Agent 运行能力，EvoTeam 负责组织、评价与演进；系统应当先可观察、再可评价、最后可逆地演进。但这些内容都是目标架构，没有代码证明数据能够沿链路流动。
+| 发现 | 影响 | 本次处理 |
+| --- | --- | --- |
+| 同一 Trigger 没有消费登记 | 全部 Reject 后再次请求会重新调用模型，最后才发生记录 ID 冲突 | 增加持久化原子 claim；完成后返回已有记录；执行中重复请求拒绝；同一触发不接受变更验证参数后重试 |
+| 取消只结束一个 Run | Validator 可能继续后续任务和候选 | 先封存 CANCELLED Run，再向离线控制器传播取消，终止批次并记录原因 |
+| API 对不存在的策略未处理 | 用户输入导致 HTTP 500 | 存储返回明确的查找失败，API 映射 404 |
+| 不同历史窗口可生成同 ID 的 Verifier 提案 | 不可覆盖存储拒绝第二份提案 | 提案 ID 纳入归因身份；已有 Verifier 不重复新增 |
 
-### 当前版本
+本轴确认四组行为问题，最高影响是重复触发造成重复模型调用与治理收尾失败。未将命名偏好或规划中尚未实现的能力列为工程缺陷。
 
-当前版本已经实现：
+## Spec：冻结规范审查
 
-```text
-Task
-  → TaskAnalyzer
-  → Strategy 快照
-  → Orchestrator
-  → Planner / Executor / Critic（可选 Verifier）
-  → 独立 Evaluator
-  → SQLite 原子封存
-```
+| 发现 | 规范要求 | 本次处理 |
+| --- | --- | --- |
+| 未知 Token/延迟仍可 PASS | 已声明的成本边界必须有可比较证据 | 缺失受限指标返回 CONTINUE_SAMPLING；零质量差不再视为正向收益 |
+| 单次比较即可晋级 | 样本不足不能默认晋级 | GatePolicy 增加显式 minimum_paired_runs；未登记或不足不能 PASS，字段最小为 2，具体门槛仍需预注册 |
+| 归因只看最终错误码 | Origin / Control 应由 Trace 和实际产物支持 | 读取封存快照；缺计划不自动归罪 Executor；Critic 已指出错误不算漏检；证据缺失不生成确定归因 |
+| Validator 未检查对照条件 | 比较保持模型、授权能力、随机配置和预算一致 | 执行前拒绝预算、Runtime、模型和授权能力差异；允许已支持的 Prompt 与结构变更 |
+| 归因引用及配对身份校验不足 | 晋级证据必须对应本次验证 | 拒绝重复/共享 Run ID，要求改进归因引用当前 Validation |
+| seeds 只记录未实际下发 | 不把随机调用描述为受控种子实验 | ValidationResult 显式保存 seed_not_applied 与 aggregate_metrics_only 限制 |
 
-Agent 不直接互调，而是由 Orchestrator 使用结构化 `AgentMessage` 转发。Trace 保存 Agent 输入、输出、上游事件引用、token、延迟、运行状态和评价结果。失败、超时和取消也进入终结记录，不只保存成功案例。
+本轴确认六组问题，最高影响是证据不完整仍可能晋级。两次运行只是最低结构门槛，不代表统计显著性或跨任务泛化成立。
 
-这项改进把最初版本的“可观察性”原则变成了可以查询和复盘的执行证据。
+## 当前进展
 
-## 4. 从固定链路到受限 DAG 与有界返工
+- **P0**：领域对象、项目规划 v1 契约、规则检查和基本工程配置已有实现。
+- **P1**：真实 SDK 在线链路、受限 DAG/返工、封存与故障处理已有实现，组员提交了外部服务调用记录。
+- **P2**：重复失败监控与冷却可运行；真实基线校准、漂移/成本/贡献信号与自动 Stable 判断未完成。
+- **P3**：基于直接产物证据的失败归因、Prompt 与新增 Verifier 两类候选可运行；Tool Policy、贡献分析与消融未完成。
+- **P4**：配对执行、基本 Gate、版本操作与治理记录已有实现；尚未取得有充分样本支持的真实晋级、未来任务收益和自动退化回滚证据。
+- **P5**：有本地 API 和历史报告；尚无前端、三类任务实验、完整对照消融及最终测试套件。
 
-最初版本没有运行时编排实现。当前 Orchestrator 支持两种经过静态校验的结构：
+组员的 `runs/` 记录作为历史实验产物保留，本次未重跑外部模型、未新增真实模型效果结论。Fake Runtime 的可控晋级测试验证控制流程，不能用于证明模型能力改进。
 
-```text
-Planner → Executor → Critic
+## 后续实施顺序
 
-Planner → Executor → Verifier → Critic
-                   └──────────→ Critic
-```
+1. **建立可信基线与数据登记。** 固定代码、模型配置、Prompt 和评价器，登记独立 History / Validation / Final Test 内容及版本，加入任务内容去重和防复用检查，统计成功/失败类型与用量。先补数据覆盖再校准 Policy。
+2. **补齐验证证据。** 保存逐任务配对指标、成功率分母、子类退化、延迟分位数与波动；明确实际可控随机参数。预注册样本量、收益与成本门槛、候选选择和验证复用规则。
+3. **完成真实跨任务闭环。** 用可解释故障比较 Prompt、受控 constraint_checker Tool Policy 与 Verifier；记录拒绝或晋级原因，证明新 Current 对独立后续任务的影响，随后验证退化与恢复。
+4. **补治理恢复与展示。** 完成自动 Stable/Reopen/Rollback 证据规则、进程崩溃恢复、数据库迁移和 API 错误契约；围绕已有记录实现只读时间线、候选差异及 Gate 展示。
 
-第二种结构中，Critic 同时收到 Executor 原产物和 Verifier 审查结果。系统会拒绝未知角色、悬空边、重复边、自环、循环、任意条件路由以及超过约束的节点数量。
+可执行任务与验收条件见 [下一轮实施计划](NEXT_STEPS.md)。当前优先级是验证可信度与恢复能力。通用拓扑搜索、额外框架和新的 Role 不在本轮范围。
 
-当前还支持一次任务内返工：Critic 返回 `passed=false` 时，Executor 接收 Planner 结果与结构化 `critic_feedback` 后再执行一次，随后 Verifier/Critic 再审核；不会无界循环。
+## 使用限制
 
-真实 DeepSeek 回归已经观察到：
-
-```text
-Planner → Executor → Critic → Executor → Critic
-```
-
-且最终 `retry_count=1`。这证明返工是实际消息与模型调用，不是仅在数据模型中增加一个计数字段。
-
-## 5. 从“演进设想”到可运行的离线闭环
-
-最初版本设计了经验驱动演进，但没有可执行模块。当前链路为：
-
-```text
-SealedRun
-  → ExperienceAggregator
-  → StrategyMonitor
-  → EvolutionTrigger
-  → Failure Attribution
-  → Bounded Mutation
-  → Candidate
-  → Current/Candidate Validation
-  → Improvement Attribution
-  → Validation Gate
-  → Promote / Reject
-```
-
-具体改进包括：
-
-- 普通 Online Run 不直接修改 Strategy，演进通过显式离线入口启动。
-- CandidateGenerator 不读取验证集答案。
-- Current 与 Candidate 使用相同任务、模型、评价器和预算进行配对验证。
-- Validation Run 与 Online Run 按 `RunPurpose` 隔离，不污染 Monitor。
-- 一轮可生成多个 Candidate，并为每个候选独立分配版本、验证和裁决。
-- 只有 Gate PASS 的候选参与选择，一轮最多晋升一个；其余统一拒绝。
-- 候选失败、Gate 拒绝和未晋级版本同样保留证据。
-
-## 6. 当前已经能演进什么
-
-当前自动 Mutation 仍是白名单能力，只能进行两类改变：
-
-1. `UPDATE_PROMPT`：将 Executor 的 Prompt 从 `executor@v0` 替换为登记过的 `executor@v1-resource-check`。
-2. `ADD_AGENT_CONFIG`：从固定 Role Pool 增加唯一 Verifier，并接入受限拓扑。
-
-系统不会让模型任意写代码、创造新 Role、创建任意 Tool、扩大权限或生成无界工作流。这比开放式“让 Agent 随便改自己”更适合当前 Demo，因为候选差异可定位、可验证、可拒绝、可回滚。
-
-## 7. 最新真实回归证明了什么
-
-2026-09-09 的最新 DeepSeek 回归包含 6 个 Team Run、21 次真实模型调用和 21,276 tokens，证明：
-
-- 复杂三 Agent 项目规划能够通过确定性硬约束检查。
-- Critic 反馈能够触发且只能触发一次 Executor 返工。
-- 一个真实失败可以形成 Monitor Trigger。
-- 同一轮可以生成 Prompt 与 Verifier 两个候选。
-- Verifier Candidate 会真实执行四节点 DAG。
-- Critic 能收到 Executor 与 Verifier 两路上游证据。
-- 两个候选的归因、提案、验证和 Gate 结果全部进入 SQLite。
-- 两个候选均不满足 Gate 时，Current 不会被错误替换。
-
-这次没有证明“自演进一定提升效果”。相反，两个候选均被拒绝：Prompt Candidate 虽更省 token 和延迟，但现有 Gate 尚不承认纯效率收益；Verifier Candidate 增加约 17.50% token，超过限制。这个结果说明治理链路生效，但效果证据仍不足。
-
-## 8. 相比最初版本最重要的实质改进
-
-### 8.1 概念有了可执行语义
-
-Role、AgentConfig、AgentInstance、Team、Strategy、Run 和 EvolutionRecord 不再只是架构图中的名词，而是有 Pydantic 契约、身份检查和持久化行为的独立对象。
-
-### 8.2 “多 Agent”不再只是多个 Prompt 顺序调用
-
-当前系统记录消息发送者、接收者和上游完成事件；支持多上游输入、Verifier 分支和 Critic 反馈返工。因此可以解释某个节点看到了什么，以及结果为何进入下一步。
-
-### 8.3 “自演进”不等于在线改 Prompt
-
-长期变化必须经过 Trigger、归因、白名单 Mutation、隔离验证、Gate 和生命周期。当前版本已经能拒绝没有充分收益的候选，并保留 Current。
-
-### 8.4 结果可以由程序独立检查
-
-项目计划不是靠 Critic 自己宣布成功。Team 外的 ConstraintChecker 会检查工作完整性、工期、依赖、技能、人员重叠、可用时间、预算、截止时间和里程碑。
-
-### 8.5 失败成为正式数据
-
-失败 Run、硬错误、Critic 漏检、候选失败、Gate Reject 都会保留，而不是只展示成功输出。这为后续贡献分析、回归和可解释演进提供了基础。
-
-## 9. 当前待改进事项
-
-### P0：补齐 Gate 的效率型晋级规则
-
-最新实验中，Prompt Candidate 的 token 降低约 2.57%、延迟降低约 33.35%，质量与硬约束没有退化，却因 Gate 只承认质量/成功/硬错误收益而被拒绝。应显式区分质量型和效率型 Candidate，并预注册：
-
-- 最小 token 或延迟收益；
-- 最大质量回归；
-- 候选目标类型；
-- 多样本稳定性与置信条件；
-- 平局和继续采样规则。
-
-### P0：扩大并冻结验证数据集
-
-当前打包验证集只有一个简单任务，无法说明泛化。应建立 History、Validation、Final Test 三个隔离分区，优先覆盖 20–50 个项目计划任务：串行、并行、技能不足、资源冲突、预算不足、不可行期限、多里程碑、依赖分支和文字/结构矛盾。
-
-### P0：增加专用 Verifier 证据协议
-
-Verifier 当前复用 `PlanningReview`，只能输出 passed/issues。应增加结构化检查项、被检查字段、计算依据和证据引用，使 Critic 能区分模型意见与确定性验证结果。
-
-### P1：受控 Tool / Skill 演进
-
-当前 Agent 没有 Tool 或 Skill。下一步不宜允许生成并立即执行任意代码，而应先建立 Capability Registry、权限白名单、隔离 Smoke Test 和 Gate，再允许 Candidate 从已审核资产中选择或提出待人工审核的新能力。
-
-优先工具可复用现有检查逻辑：
-
-- Executor：排期与成本计算；
-- Verifier/Critic：计划硬约束校验。
-
-### P1：更多 Monitor 信号
-
-当前只有 repeated_failure 真正启用。质量漂移、成本超限、低贡献、分布变化、STABLE/Reopen 和上线后退化 Rollback 仍需完成指标口径及测试。
-
-### P1：贡献分析与消融
-
-目前能做 Failure Attribution 和 Improvement Attribution，但不能证明新增 Verifier 的独立贡献。应比较：
-
-- 有无 Verifier；
-- Verifier 直接输出是否改变 Critic 判断；
-- 删除某条边是否影响质量；
-- Agent 增量成本是否值得。
-
-### P1：实验稳定性与成本治理
-
-当前模型调用存在随机波动，而验证只有单任务、单次重复。应增加重复次数、种子记录、均值/方差、P50/P95 延迟和严格的演进总预算。每个 Candidate 目前都会重新跑一遍 Current，比较公平但成本会线性增长。
-
-### P2：数据库迁移和崩溃恢复
-
-新增演进表后，旧数据库需要显式初始化升级；还没有正式迁移命令。长时间演进在进程中断后的幂等恢复、Trigger 消费状态和部分 Candidate 收尾也需要完善。
-
-### P2：Trace 查询和可视化
-
-SQLite 已有完整数据，但缺少面向用户的 Run 时间线和演进对比页面。应提供按 Run/Evolution 查询的 API，再做可视化，避免直接依赖 SQLite 和 SDK 原始日志。
-
-## 10. 建议的下一阶段验收顺序
-
-1. 修正效率型 Gate，并补对应自动化测试。
-2. 扩充独立 Validation Set，进行 5–10 次小规模配对回归。
-3. 为 Verifier 增加明确检查证据，测量其实际边际贡献。
-4. 建立受控 Tool Registry，再允许 Tool Policy Candidate。
-5. 增加成本/贡献 Monitor、STABLE/Reopen 和真实 Rollback 测试。
-6. 最后再做 Trace API 与展示页面。
-
-这样可以先证明“演进是否真的产生稳定收益”，再扩大系统能够改变的范围。
+- minimum_paired_runs 缺省为 None 以便读取旧配置，但旧配置无法授权晋级；单样本示例应得到拒绝或待采样。改门槛需登记新 Policy 版本，不在看完结果后修改同一 Trigger 的参数。
+- 当前指标仍主要是整体汇总；尚无逐子类负迁移与统计置信控制。改进归因中的差值是观测描述，不是已证明的因果收益。
+- 重复消费通过数据库 claim 防止；进程硬退出后的未完成 claim 不自动重试，需要核对证据后人工恢复。旧数据库需显式升级表结构，不自动覆盖或重建已有历史。
+- HTTP 服务是本地开发入口，没有鉴权与多用户隔离。总 Token 上限仍为响应后检测，并非输入费用的硬上限。

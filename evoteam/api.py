@@ -77,6 +77,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await initialize_database(
                 _database_path(configured.database_url), request.strategy, configured
             )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="策略或版本化资源不存在") from exc
         except (OSError, ValueError) as exc:
             raise _safe_bad_request(exc) from exc
         return {"initialized": True}
@@ -90,6 +92,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 strategy_id=request.strategy_id,
                 settings=configured,
             )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="策略或版本化资源不存在") from exc
         except (OSError, ValueError) as exc:
             raise _safe_bad_request(exc) from exc
 
@@ -102,6 +106,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 task_scope=request.task_scope,
                 policy=request.policy,
             )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="策略或版本化资源不存在") from exc
         except (OSError, ValueError) as exc:
             raise _safe_bad_request(exc) from exc
 
@@ -117,6 +123,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 gate_policy=request.gate_policy,
                 settings=configured,
             )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="策略或版本化资源不存在") from exc
         except (OSError, ValueError) as exc:
             raise _safe_bad_request(exc) from exc
 

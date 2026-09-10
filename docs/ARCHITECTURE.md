@@ -203,7 +203,7 @@ OpenJiuwenRuntimeAdapter
 openJiuwen Core → Model / Tool / Workflow / ReAct
 ```
 
-EvoTeam 保存可序列化配置、运行证据和版本治理。Adapter 的目标职责是把 AgentConfig 映射为真实 SDK Agent，并把运行回调转换为统一 TraceEvent；Adapter 已延迟加载锁定的 ReActAgent，实现单次、无工具、无重试的结构化调用和用量转换；真实 SDK 使用本地 HTTP 完成联调，外部服务仍待实际配置验收。使用底层 Workflow 能力不能把 EvoTeam 的权限、预算与控制职责绕过。
+EvoTeam 保存可序列化配置、运行证据和版本治理。Adapter 的目标职责是把 AgentConfig 映射为真实 SDK Agent，并把运行回调转换为统一 TraceEvent；Adapter 已延迟加载锁定的 ReActAgent，实现单次、无工具、无重试的结构化调用和用量转换；真实 SDK 使用本地 HTTP 完成联调，仓库另保留组员提交的外部服务回归记录；充分样本的效果验收仍待完成。使用底层 Workflow 能力不能把 EvoTeam 的权限、预算与控制职责绕过。
 
 模块布局（v0 在线闭环、受限 Verifier DAG/返工、真实 SDK、重复失败观察及多候选演进已接入）：
 

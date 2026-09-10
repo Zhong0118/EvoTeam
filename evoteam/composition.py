@@ -61,7 +61,7 @@ def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTea
         PackagedValidationDatasets(),
     )
     manager = EvolutionManager(
-        attributor=OutcomeAttributor(),
+        attributor=OutcomeAttributor(storage.runs),
         generator=CandidateGenerator(),
         validator=validator,
         gate=ValidationGate(),

@@ -2,7 +2,7 @@
 
 ## 当前仓库状态
 
-已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已完整落库；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 和前端仍待完成。
+已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已落库；审查补齐了 Trigger 原子消费、取消终止、公平比较与 Gate 缺失证据阻断；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 和前端仍待完成。
 
 开发前阅读 README、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；演进和评价工作同时阅读 EXPERIMENTS、DECISIONS。产品与架构按最终讨论冻结，现有骨架按 P0–P5 逐步填充逻辑。
 
@@ -149,10 +149,10 @@ uv run python -m evoteam serve
 
 | 文件 | 当前方法与后续职责 |
 | --- | --- |
-| `evolution/attribution.py` | 已实现规则型 Failure/Improvement 归因；Contribution 明确返回待补消融证据 |
+| `evolution/attribution.py` | Failure 依据封存产物与实际 Critic 输出；Improvement 描述比较差值；Contribution 待消融证据 |
 | `evolution/mutation.py` | 已实现 UPDATE_PROMPT 与新增 Verifier 的 ADD_AGENT_CONFIG 提案、物化和静态检查 |
 | `evolution/validator.py` | 已实现同数据集 Current/Candidate 配对执行、评价、汇总与 validation 封存 |
-| `evolution/gate.py` | 已实现质量、硬约束、Token、延迟的预注册规则裁决 |
+| `evolution/gate.py` | 质量、硬约束、Token、延迟和显式配对样本门槛；缺失受限证据不放行 |
 | `evolution/lifecycle.py` | 已实现 Promote / Reject / Stable / Reopen / Rollback 合法转换 |
 | `evolution/manager.py` | 已实现多个单因素候选的生成、独立验证、确定性选择和统一生命周期收尾 |
 
@@ -162,6 +162,9 @@ uv run python -m evoteam serve
 | --- | --- |
 | `storage/protocol.py` | RunStore（含 seal_run 原子封存）、StrategyStore、EvolutionStore；显式用途与生命周期契约 |
 | `storage/sqlite.py` | 运行、模型、经验、监控、唯一版本号、完整演进产物及生命周期原子切换 |
+| `tests/test_evolution_governance.py` | 重复/并发消费、取消与父版本竞争收尾 |
+| `tests/test_gate_review.py` / `tests/test_validation_review.py` | Gate 证据身份、成本与样本门槛、公平比较 |
+| `tests/test_attribution_review.py` | 封存产物归因、Critic 漏检与候选身份 |
 | `tests/test_evolution.py` | 无 API 的 Prompt 演进、配对验证、隔离、晋级与唯一版本号测试 |
 | `tests/test_skeleton.py` | 初始契约、边界及 CLI 测试，不调用模型或数据库 |
 | `tests/test_planning.py` | 项目规划输入与约束正反例、独立评价 |
@@ -184,3 +187,5 @@ uv run python -m evoteam serve
 SDK 0.1.17.post1 的导入和 SSL 代码会产生上游弃用警告，当前测试保留这些警告；不将其隐藏成无警告结果。
 
 Adapter 的清理直接使用 SDK 的公开 checkpoint/context 释放接口。锁定版本的 `ReActAgent.clear_session` 会经全局 Runner 导入无关 Team/Evolving 可选依赖，当前不走该路径，也不为此扩大项目依赖。
+
+本次 main 与功能分支的审查、进展和后续次序统一维护在 [VERSION_COMPARISON](docs/VERSION_COMPARISON.md)。新增 evolution_claims 表；旧数据库不能直接 open，升级需备份后显式建表并核验，不删除原始运行证据。当前没有自动迁移或进程崩溃后的 claim 恢复工具。

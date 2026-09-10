@@ -1,5 +1,6 @@
 """只有 Trigger 后启动的离线总控；不亲自打分或决定 Gate。"""
 
+import asyncio
 from collections.abc import Sequence
 
 from evoteam.domain.common import StrategyRef
@@ -69,73 +70,132 @@ class EvolutionManager:
         evolution_id = evidence_id(
             "evolution", [trigger.trigger_id, current.metadata.ref.model_dump()]
         )
-        attribution = await self.attributor.analyze_failure(evidence)
-        await self.records.save_attribution(attribution)
-        proposals = await self.generator.propose(current, attribution, policy)
-        for proposal in proposals:
-            await self.records.save_proposal(proposal)
-        if not proposals:
+        fingerprint = evidence_id(
+            "evolution-request",
+            [
+                trigger.model_dump(),
+                policy.model_dump(),
+                validation_plan.model_dump(),
+                gate_policy.model_dump(),
+            ],
+        )
+        completed = await self.records.claim(evolution_id, current.metadata.ref, fingerprint)
+        if completed is not None:
+            return completed
+        candidate_refs: list[StrategyRef] = []
+        validations: dict[StrategyRef, ValidationResult] = {}
+        validation_refs: list[str] = []
+        attribution_refs: list[str] = []
+        gates: list[GateResult] = []
+        proposals = ()
+        try:
+            attribution = await self.attributor.analyze_failure(evidence)
+            await self.records.save_attribution(attribution)
+            attribution_refs.append(attribution.report_id)
+            proposals = await self.generator.propose(current, attribution, policy)
+            for proposal in proposals:
+                await self.records.save_proposal(proposal)
+            if not proposals:
+                record = EvolutionRecord(
+                    evolution_id=evolution_id,
+                    trigger=trigger,
+                    attribution_refs=(attribution.report_id,),
+                )
+                await self.records.save_record(record)
+                return record
+
+            for proposal in proposals:
+                candidate_ref = await self.strategies.allocate_version(
+                    current.metadata.ref.strategy_id
+                )
+                candidate = self.generator.materialize(
+                    current, proposal, candidate_ref=candidate_ref
+                )
+                await self.strategies.save(candidate)
+                candidate_refs.append(candidate_ref)
+                try:
+                    validation = await self.validator.validate(current, candidate, validation_plan)
+                    await self.records.save_validation(validation)
+                    improvement = await self.attributor.analyze_improvement(validation)
+                    await self.records.save_attribution(improvement)
+                    gate = self.gate.decide(validation, improvement, gate_policy)
+                    validations[candidate_ref] = validation
+                    validation_refs.append(validation.validation_id)
+                    attribution_refs.append(improvement.report_id)
+                except Exception as exc:
+                    gate = GateResult(
+                        validation_id=f"failed:{candidate_ref.version}",
+                        decision=GateDecision.FAIL,
+                        policy_ref=gate_policy.ref,
+                        reasons=(f"验证流程异常：{type(exc).__name__}",),
+                        improvement_attribution_ref=attribution.report_id,
+                    )
+                gates.append(gate)
+
+            passing = [
+                ref
+                for ref, gate in zip(candidate_refs, gates, strict=True)
+                if gate.decision == GateDecision.PASS and ref in validations
+            ]
+            promoted = (
+                max(passing, key=lambda ref: self._selection_key(validations[ref], ref.version))
+                if passing
+                else None
+            )
             record = EvolutionRecord(
                 evolution_id=evolution_id,
                 trigger=trigger,
-                attribution_refs=(attribution.report_id,),
+                attribution_refs=tuple(attribution_refs),
+                proposal_refs=tuple(proposal.proposal_id for proposal in proposals),
+                candidates=tuple(candidate_refs),
+                validation_refs=tuple(validation_refs),
+                gate_results=tuple(gates),
+                promoted=promoted,
             )
-            await self.records.save_record(record)
+            await self.lifecycle.finalize_candidates(
+                tuple(candidate_refs), tuple(gates), record, selected=promoted
+            )
             return record
+        except (Exception, asyncio.CancelledError) as exc:
+            reason = "cancelled" if isinstance(exc, asyncio.CancelledError) else type(exc).__name__
+            aborted = EvolutionRecord(
+                evolution_id=evolution_id,
+                trigger=trigger,
+                attribution_refs=tuple(attribution_refs),
+                proposal_refs=tuple(proposal.proposal_id for proposal in proposals),
+                candidates=tuple(candidate_refs),
+                validation_refs=tuple(validation_refs),
+                gate_results=tuple(
+                    GateResult(
+                        validation_id=validations[ref].validation_id
+                        if ref in validations
+                        else f"aborted:{ref.version}",
+                        decision=GateDecision.FAIL,
+                        policy_ref=gate_policy.ref,
+                        reasons=(f"演进终止：{reason}",),
+                        improvement_attribution_ref=attribution_refs[0]
+                        if attribution_refs
+                        else "unavailable",
+                    )
+                    for ref in candidate_refs
+                ),
+                termination_reason=reason,
+            )
 
-        candidate_refs = []
-        validations: dict[StrategyRef, ValidationResult] = {}
-        validation_refs = []
-        attribution_refs = [attribution.report_id]
-        gates = []
-        for proposal in proposals:
-            candidate_ref = await self.strategies.allocate_version(current.metadata.ref.strategy_id)
-            candidate = self.generator.materialize(current, proposal, candidate_ref=candidate_ref)
-            await self.strategies.save(candidate)
-            candidate_refs.append(candidate_ref)
-            try:
-                validation = await self.validator.validate(current, candidate, validation_plan)
-                await self.records.save_validation(validation)
-                improvement = await self.attributor.analyze_improvement(validation)
-                await self.records.save_attribution(improvement)
-                gate = self.gate.decide(validation, improvement, gate_policy)
-                validations[candidate_ref] = validation
-                validation_refs.append(validation.validation_id)
-                attribution_refs.append(improvement.report_id)
-            except Exception as exc:
-                gate = GateResult(
-                    validation_id=f"failed:{candidate_ref.version}",
-                    decision=GateDecision.FAIL,
-                    policy_ref=gate_policy.ref,
-                    reasons=(f"验证流程异常：{type(exc).__name__}",),
-                    improvement_attribution_ref=attribution.report_id,
-                )
-            gates.append(gate)
+            async def seal_abort() -> None:
+                if candidate_refs:
+                    await self.lifecycle.abort(aborted)
+                else:
+                    await self.records.save_record(aborted)
 
-        passing = [
-            ref
-            for ref, gate in zip(candidate_refs, gates, strict=True)
-            if gate.decision == GateDecision.PASS and ref in validations
-        ]
-        promoted = (
-            max(passing, key=lambda ref: self._selection_key(validations[ref], ref.version))
-            if passing
-            else None
-        )
-        record = EvolutionRecord(
-            evolution_id=evolution_id,
-            trigger=trigger,
-            attribution_refs=tuple(attribution_refs),
-            proposal_refs=tuple(proposal.proposal_id for proposal in proposals),
-            candidates=tuple(candidate_refs),
-            validation_refs=tuple(validation_refs),
-            gate_results=tuple(gates),
-            promoted=promoted,
-        )
-        await self.lifecycle.finalize_candidates(
-            tuple(candidate_refs), tuple(gates), record, selected=promoted
-        )
-        return record
+            cleanup = asyncio.create_task(seal_abort())
+            while not cleanup.done():
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    continue
+            cleanup.result()
+            raise
 
     @staticmethod
     def _selection_key(result: ValidationResult, version: int) -> tuple[float, ...]:

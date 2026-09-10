@@ -1,8 +1,12 @@
 """预注册的晋级规则；不在这里生成候选或切换当前版本。"""
 
+from typing import Annotated
+
+from pydantic import Field
+
 from evoteam.domain.common import AssetRef, FrozenModel, NonNegativeFloat, Probability
 from evoteam.domain.evolution import GateDecision, GateResult, ValidationResult
-from evoteam.domain.experience import AttributionReport
+from evoteam.domain.experience import AttributionKind, AttributionReport
 
 
 class GatePolicy(FrozenModel):
@@ -11,6 +15,8 @@ class GatePolicy(FrozenModel):
     maximum_quality_regression: Probability
     maximum_token_increase: NonNegativeFloat
     maximum_latency_increase: NonNegativeFloat
+    minimum_paired_runs: Annotated[int, Field(ge=2)] | None = None
+    # None 保持旧配置可读，但未经样本量预注册不能晋级。
     # TODO(P4): 质量/效率两类 Gate、严重错误、负迁移与置信规则。
     # 无默认门槛；不把示例数字当作校准值。
 
@@ -25,12 +31,29 @@ class ValidationGate:
         """按预注册阈值裁决；指标未知时不把未知当作零或自动 PASS。"""
         if improvement.strategy != result.candidate:
             raise ValueError("改进归因与 Candidate 不匹配")
-        if not result.current_run_ids or len(result.current_run_ids) != len(
-            result.candidate_run_ids
+        if (
+            not result.current_run_ids
+            or len(result.current_run_ids) != len(result.candidate_run_ids)
+            or len(set(result.current_run_ids)) != len(result.current_run_ids)
+            or len(set(result.candidate_run_ids)) != len(result.candidate_run_ids)
+            or set(result.current_run_ids) & set(result.candidate_run_ids)
         ):
             raise ValueError("Gate 只接受非空配对验证")
+        if not any(
+            claim.kind == AttributionKind.IMPROVEMENT
+            and f"validation:{result.validation_id}" in claim.evidence_refs
+            for claim in improvement.claims
+        ):
+            raise ValueError("改进归因没有引用本次 Validation")
+        missing_evidence = False
         reasons: list[str] = []
         failures: list[str] = []
+        if (
+            policy.minimum_paired_runs is None
+            or len(result.current_run_ids) < policy.minimum_paired_runs
+        ):
+            missing_evidence = True
+            reasons.append("配对样本门槛未登记或样本不足")
         current = result.current_metrics
         candidate = result.candidate_metrics
 
@@ -49,7 +72,7 @@ class ValidationGate:
             reasons.append(f"质量差值={delta:.6f}")
             if delta < -policy.maximum_quality_regression:
                 failures.append("质量退化超过允许上限")
-            quality_improved = delta >= policy.minimum_quality_gain
+            quality_improved = delta > 0 and delta >= policy.minimum_quality_gain
 
         constraint_improved = (
             current.hard_constraint_errors is not None
@@ -67,6 +90,7 @@ class ValidationGate:
             ),
         ):
             if before is None or after is None:
+                missing_evidence = True
                 reasons.append(f"{label}指标未知")
                 continue
             increase = self._relative_increase(float(before), float(after))
@@ -77,7 +101,7 @@ class ValidationGate:
         if failures:
             decision = GateDecision.FAIL
             reasons.extend(failures)
-        elif improvement.needs_more_evidence:
+        elif improvement.needs_more_evidence or missing_evidence:
             decision = GateDecision.CONTINUE_SAMPLING
             reasons.append("改进归因缺少可比较证据")
         elif not (quality_improved or constraint_improved or success_improved):

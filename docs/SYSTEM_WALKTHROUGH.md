@@ -10,12 +10,12 @@
 | Planner → Executor → Critic | 初始 v0；已支持可选 Verifier 分支、结构化多上游和一次有界返工 |
 | 独立评价、SQLite 封存和读取 | 已实现，成功、失败、超时、取消均留档 |
 | 无模型演示 | 可运行；Fake Runtime 只返回手写产物，其他组件执行真实代码 |
-| 真实 openJiuwen Adapter | 已实现 ReActAgent 调用；真实 SDK 对接本地 HTTP 的集成测试通过，外部模型待配置实测 |
+| 真实 openJiuwen Adapter | 已实现 ReActAgent 调用；真实 SDK 对接本地 HTTP 的集成测试通过，另保留组员提交的外部服务回归记录 |
 | Experience / Monitor | 已实现重复错误聚合、成功反例、重复失败 Trigger、冷却及检查点持久化；其余信号未启用 |
 | 离线演进 | 已实现 Prompt/新增 Verifier 多候选、完整产物落库、配对验证、选择、Gate 和版本治理 |
 | API / 前端 | 已有本地 health/init/run/observe/evolve API；前端与鉴权尚未实现 |
 
-这意味着首版 Prompt 演进代码可运行，但还不能把 Fake Runtime 结果宣称为真实模型收益。
+受限 Prompt/Verifier 演进流程可运行；Fake Runtime 晋级测试与少量外部调用不能证明稳定的演进收益。
 
 ## 2. 五分钟运行示例
 
@@ -28,7 +28,7 @@ uv run python -m evoteam v0 --model-id preview --model-version draft
 uv run python -m evoteam demo --database /tmp/evoteam-demo.sqlite3
 ```
 
-`demo` 的数据库路径必须不存在；再次运行请使用另一个新文件名。命令使用 [task.json](../examples/project_planning/task.json) 和手写的 [plan.json](../examples/project_planning/plan.json)，打印 SealedRun JSON，在线证据写入 `strategies`、`events`、`runs`。当前还建立 `model_configs`（非敏感模型绑定）、`experiences`（经验）和 `monitor_states`（观察检查点）三张表。不需要模型密钥。
+`demo` 的数据库路径必须不存在；再次运行请使用另一个新文件名。命令使用 [task.json](../examples/project_planning/task.json) 和手写的 [plan.json](../examples/project_planning/plan.json)，打印 SealedRun JSON，在线证据写入 `strategies`、`events`、`runs`。当前还建立 `model_configs`（非敏感模型绑定）、`experiences`（经验）和 `monitor_states`（观察检查点）三张表，以及 strategy_counters、attributions、mutation_proposals、validations、evolutions 和 evolution_claims，分别保存版本号、归因、提案、验证、治理结果和演进消费登记。不需要模型密钥。
 
 示例安排 Alice 在 `[0,2)` 小时做设计，在 `[2,6)` 小时实现，费率为每小时 100 分，人工费用共 600 分，未超过 800 分预算。相邻区间不重叠。这里的参数只用于演示，不是正式模型预算或实验校准结果。
 
@@ -51,9 +51,9 @@ finally:
 
 ### 配置真实模型并运行
 
-参考 [.env.example](../.env.example) 创建或补齐本地 `.env`，填写：模型引用 ID/版本、服务端模型名称、兼容 Chat Completions 的 API Base、独立密钥、请求超时、最大输出 Token、temperature 和 top_p。当前只接 OpenAI 兼容协议，要求 JSON object 输出；不默认选供应商或模型，不支持时不静默降级。
+参考 [.env.example](../.env.example) 创建或补齐本地 `.env`，填写：模型引用 ID/版本、服务端模型名称、兼容 Chat Completions 的 API Base、独立密钥、请求超时、最大输出 Token、temperature 和 top_p。当前只接 OpenAI 兼容协议，要求 JSON object 输出；配置示例目前填写了组员使用的服务与模型标识，须按实际服务核对；不支持时不静默降级。
 
-检查 [strategy.json](../examples/project_planning/strategy.json)：模型引用必须与 `.env` 对应，预算必须明确。示例的 12000 总 Token、180 秒、单节点 60 秒等只用于启动配置，不代表校准结论。初始 CURRENT 表示显式登记第一条基线，不代表演进候选通过 Gate。
+检查 [strategy.json](../examples/project_planning/strategy.json)：模型引用必须与 `.env` 对应，预算必须明确。示例中的总 Token、总超时和单节点超时只用于启动配置，不代表校准结论。初始 CURRENT 表示显式登记第一条基线，不代表演进候选通过 Gate。
 
 ```bash
 # 只登记配置，不调用模型；数据库文件必须不存在。
@@ -85,7 +85,7 @@ EVOTEAM_RUN_LIVE_TEST=1 uv run pytest tests/test_live_provider.py -q
 
 ```mermaid
 flowchart TD
-    CLI[CLI / demo / 后续 API] --> Composition[composition 装配根]
+    CLI[CLI / demo / API] --> Composition[composition 装配根]
     Composition --> Online[TaskService 在线入口]
     Composition --> Offline[EvolutionService 显式观察入口]
     Online --> Analyzer[TaskAnalyzer 输入解析]
@@ -197,7 +197,7 @@ sequenceDiagram
 - Adapter 向 SDK 传递 `min(单次最大输出 Token, 剩余总 Token)`，并关闭 HTTP 重试、工具和额外迭代；响应返回后按供应商报告的输入+输出用量检查总预算。当前未按服务端 tokenizer 预计算输入 Token，因此总预算是事后检测并阻止后续节点，不能保证本次请求的输入费用不超额，也不是总成本硬上限。
 - 已完成产物在后续失败时保留并独立检查；供应商缺失或仅提供部分用量时保持未知，不能采用 SDK 填充的零值。
 - 错误实例或 Schema 的返回值保存在不可信失败 Trace，不作为可信计划评分。
-- 取消转换为 CANCELLED 结果并封存；清理任务受保护且每个 close 有超时。该入口以结果返回取消状态，不重新抛出 CancelledError。清理超时/异常会记录失败原因，Adapter 会释放对应的 SDK checkpoint 和 context；HTTP 客户端使用非共享模式，在 SDK 调用 finally 中关闭。
+- 取消转换为 CANCELLED 结果并封存；清理任务受保护且每个 close 有超时。在线入口以结果返回取消状态；Validator 封存该 Run 后重新抛出 CancelledError，终止后续验证任务和候选。清理超时/异常会记录失败原因，Adapter 会释放对应的 SDK checkpoint 和 context；HTTP 客户端使用非共享模式，在 SDK 调用 finally 中关闭。
 - 封存事务同时写评价事件、封存事件、快照和索引；写入失败整体回滚。封存后不能追加事件或覆盖结果。
 - Strategy 只能首次登记，唯一约束禁止覆盖同版本或设置第二个 Current；正式生命周期通过原子事务切换，不能通过 save 冒充晋级。
 
@@ -220,7 +220,13 @@ sequenceDiagram
 
 正常在线任务不会自动调用演进。Validation Run 不进入线上观察窗口；Validator 复用同一个 Orchestrator 和 Evaluator，并分别封存 Current/Candidate。何时观察与数值阈值仍需真实基线校准；当前没有后台调度器。检查点按策略、范围、评价版本和 Policy 版本隔离。完全相同窗口返回同一个已有结果与 Trigger ID；不会重新消耗冷却计数。新窗口按此前未观察过的 Run 计数冷却，进程重启后继续使用检查点；同时观察发生竞争时通过 revision 检查拒绝陈旧写入。
 
-当前只启用 `repeated_failure`。同一个 Run 多条同码错误只算一次；优先选重复次数最多的错误码，相同时按名称固定排序。没有明确成功指标的 Run 不作成功反例，置信度和因果归因保持未知。Policy 中其他阈值与 max_candidates/stable_window_count 暂为后续规则保留，不能据此声称漂移、成本、贡献判断或自动 STABLE 已实现。在线证据增长后的模式使用独立内容 ID，重复保存相同内容幂等。
+当前只启用 `repeated_failure`。同一个 Run 多条同码错误只算一次；优先选重复次数最多的错误码，相同时按名称固定排序。没有明确成功指标的 Run 不作成功反例，置信度和因果归因保持未知。max_candidates 已约束本轮候选数量；Policy 中其他信号阈值与 stable_window_count 暂为后续规则保留，不能据此声称漂移、成本、贡献判断或自动 STABLE 已实现。在线证据增长后的模式使用独立内容 ID，重复保存相同内容幂等。
+
+Manager 在调用归因与模型之前原子登记 Trigger 消费。已完成请求返回既有记录；同一 Strategy 执行中的竞争请求拒绝，不能通过改变 Gate 或 ValidationPlan 重放同一 Trigger。取消会停止验证并保存终止原因；发生父版本竞争时，只拒绝仍未上线的候选，不覆盖新 Current。进程硬退出遗留的 claim 暂不自动恢复，须人工核对。
+
+Gate 要求改进归因引用本次验证、配对 Run 身份独立、受限成本指标已知，并达到显式 minimum_paired_runs。未登记样本门槛时旧配置仍可读取，但不能 PASS。当前 Gate 示例要求至少两对，打包 Validation 示例仅一个任务一次执行，因而只用于流程演示，不具备晋级条件。正式样本量必须基线校准后以新 Policy 版本预注册；两对本身不代表显著性。
+
+Validator 在调用模型前检查共同节点的模型、Runtime/授权能力及总调度预算一致。seeds 尚未实际下发至 Runtime，结果明确记录 seed_not_applied；聚合指标仍不包含逐任务负迁移或置信区间，记录 aggregate_metrics_only。History / Validation 的 RunPurpose 隔离已经实现，任务内容独立性登记和去重仍待完成。
 
 初版检查点保存已观察 Run ID 列表，适合当前受控单机实验；大规模历史需要更紧凑的游标和数据保留方案。
 

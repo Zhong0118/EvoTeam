@@ -1,7 +1,11 @@
 {
-  "ref": {"id": "project-planning-gate", "version": "demo-1"},
+  "ref": {
+    "id": "project-planning-gate",
+    "version": "demo-review-1"
+  },
   "minimum_quality_gain": 0,
   "maximum_quality_regression": 0,
   "maximum_token_increase": 0.1,
-  "maximum_latency_increase": 0.25
+  "maximum_latency_increase": 0.25,
+  "minimum_paired_runs": 2
 }

@@ -1,6 +1,6 @@
 # EvoTeam 初代 Demo 测试记录与下一步建议
 
-> 状态说明：第 1–7 节保留初代 Demo 当时的真实测试快照，其中部分“尚未实现”项后来已经完成。最新代码与 DeepSeek 回归结果见第 8 节；判断当前能力时应以第 8 节以及 `DEVELOPMENT.md` 为准。
+> 本文保留组员在 2026-09-09 提交的历史测试与外部调用记录，各节描述对应当时版本。当前实现与审查结果见 [VERSION_COMPARISON](VERSION_COMPARISON.md) 和 [DEVELOPMENT](../DEVELOPMENT.md)；本次审查未重跑这些外部模型实验。
 
 ## 1. 文档信息
 
