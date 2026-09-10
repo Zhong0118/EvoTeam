@@ -33,7 +33,7 @@ uv sync
 | 数据契约 | Pydantic；Domain、Strategy 和证据对象由 EvoTeam 自己维护 |
 | 后端相关依赖 | 已实现最小 FastAPI health/init/run/observe/evolve 接口；暂无鉴权与前端 |
 | 持久化相关依赖 | 已声明 SQLAlchemy、Alembic；首轮按单机 SQLite 路径实现 |
-| 前端 | React + TypeScript 仍为候选，仓库没有前端工程；具体组件在 P5 确定 |
+| 前端 | 已确定 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix）；React Flow / Recharts 用于图形，npm 管理依赖。仓库尚无前端工程；设计与验收见 [FRONTEND_SPEC](docs/FRONTEND_SPEC.md) |
 | 检查工具 | pytest、pytest-asyncio、Ruff、Pyright 已配置，基础契约与边界测试位于 tests/ |
 
 具体包版本以锁文件为准。接入前验证锁定版本的 SDK API、异步行为、结构化输出、Tool 与事件回调，不能把飞书示意代码中的类名当作真实 SDK 接口。

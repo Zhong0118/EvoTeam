@@ -6,15 +6,15 @@
 
 “项目负责人”指分配任务并验收最终成果的人，只审核，不承担本任务的前端、接口拼装、截图、讲稿初稿或排版。B及其Codex必须完成可交付结果，不能要求负责人补代码或拼PPT。
 
-本轮范围：**B0–B4**。核心A0、N1–N4属于执行者A，缺少核心依赖不代表B获得修改核心模块的授权。本文件与PRESENTATION_PLAN足够确定B的工作，不必从总计划猜测职责。
+本轮范围：**B0–B4**。核心A0、N1–N4属于执行者A，缺少核心依赖不代表B获得修改核心模块的授权。本文件、FRONTEND_SPEC与PRESENTATION_PLAN共同确定B的工作，不必从总计划猜测职责。
 
 ### 可直接交给 Codex 的开工指令
 
-> 请以“执行者 B：展示开发”的身份执行 docs/TASK_PRESENTATION.md，并按 docs/PRESENTATION_PLAN.md 制作演示。遵守AGENTS，先核对main实际状态，只开发B0–B4。负责只读展示接口、脱敏导出、前端页面、截图、PPT和讲稿初稿；项目负责人只验收。不要实现TASK_CORE.md的任务或自行改Gate、统计与数据库写操作。A0尚未交付时，先完成明确标记的fixture适配、页面和PPT骨架，列出依赖后继续本侧工作；接口合入main后再联调。所有数字可追溯，缺证据保留空位；最终交付可运行页面、可编辑PPT和测试/素材清单，由项目负责人验收后统一纳入main，不自行合并。
+> 请以“执行者 B：展示开发”的身份执行 docs/TASK_PRESENTATION.md，按 docs/FRONTEND_SPEC.md 实现前端，并按 docs/PRESENTATION_PLAN.md 制作演示。遵守AGENTS，先核对main实际状态，只开发B0–B4。负责只读展示接口、脱敏导出、前端页面、截图、PPT和讲稿初稿；项目负责人只验收。不要实现TASK_CORE.md的任务或自行改Gate、统计与数据库写操作。A0尚未交付时，先完成明确标记的fixture适配、页面和PPT骨架，列出依赖后继续本侧工作；接口合入main后再联调。所有数字可追溯，缺证据保留空位；最终交付可运行页面、可编辑PPT和测试/素材清单，由项目负责人验收后统一纳入main，不自行合并。
 
 ## 1. 开工依据与文件边界
 
-先读README、DEVELOPMENT、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；展示评价/实验内容时读EXPERIMENTS和DECISIONS；逐页设计以 [PRESENTATION_PLAN](PRESENTATION_PLAN.md) 为准。
+先读README、DEVELOPMENT、AGENTS、PROJECT、ARCHITECTURE、ROADMAP及 [前端规范](FRONTEND_SPEC.md)；展示评价/实验内容时读EXPERIMENTS和DECISIONS；逐页设计以 [PRESENTATION_PLAN](PRESENTATION_PLAN.md) 为准。
 
 | B可修改 | B不得接管 |
 | --- | --- |
@@ -22,7 +22,7 @@
 | `evoteam/api.py`中挂载只读router的最小改动，保持现有POST接口兼容 | 修改现有执行/晋级/回滚业务行为；展示侧不能直接写SQL或触发模型 |
 | PPT、截图、素材来源清单、导出说明和本任务进度 | A的实验数据制作、基线调用、Gate参数校准 |
 
-前端框架沿用项目候选React + TypeScript，开工时按仓库约定确认并记录实际配置，不引入新Agent框架。B负责自己的接口适配与router挂载，负责人不承担集成编码。
+前端选型确定为 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix），图形使用 React Flow / Recharts，npm 管理锁定依赖；完整工程、样式、操作及动画约定见 [FRONTEND_SPEC](FRONTEND_SPEC.md)。这些是待实施的选型，不代表已安装。B负责自己的接口适配与router挂载，负责人不承担集成编码。
 
 ## 2. B0：固定展示Schema与样例，立即开始
 
@@ -51,11 +51,11 @@ B不重新计算成功率/Gate/子类收益。当前只有聚合指标就显示�
 ## 3. B1–B4 执行要求
 ## B1：前端页面与交互，可从现在开始
 
-**主责：B。** React + TypeScript 仍是建议采用的已有候选，本计划不把它写成已安装技术栈；开工时确认一次后在 DEVELOPMENT 记录。先用静态证据包完成以下四页，不为等算法而停工。
+**主责：B。** 严格按 [FRONTEND_SPEC](FRONTEND_SPEC.md) 的四类页面、布局、设计变量和交互规则开发。先交付运行详情和 Trace 代表页面供设计验收，再复用组件完成其余页面；使用静态证据包启动，缺接口不阻塞页面开发。
 
 | 页面 | 画面与交互 | 依赖证据 | 验收 |
 | --- | --- | --- | --- |
-| 运行列表与任务详情 | 策略/用途/状态筛选，点击 Run 查看任务、排期、规则错误与用量 | SealedRun + Snapshot | 成功、失败、超时、空列表均可读；cost 未知显示“未提供” |
+| 运行列表与任务详情 | 策略/用途筛选；状态过滤若仅针对当前页必须标明，点击 Run 查看任务、排期、规则错误与用量 | SealedRun + Snapshot | 成功、失败、超时、空列表均可读；cost 未知显示“未提供” |
 | 团队与 Trace | 配置图、实际执行次序、事件列表、点击节点打开输入/输出抽屉 | execution_plan、instances、events | retry 用不同 instance 展示；三角色五次实例不画成五种 Role；多上游来源可追踪 |
 | 演进详情 | Trigger → 证据 → 归因 → Proposal Diff → Validation → Gate | 完整演进证据包 | Candidate 与 Current 标清；Reject、待采样、无候选和缺证据都有页面状态 |
 | 版本与指标 | 正式版本线、候选比较面板、用量和成功/失败概览 | 策略/治理记录、过滤后的指标 | 候选画在比较区域，不画成 Strategy Family；N3 前不展示不存在的逐题置信或子类结论 |
@@ -63,7 +63,7 @@ B不重新计算成功率/Gate/子类收益。当前只有聚合指标就显示�
 数据与演进展示均在本轮工作范围。图上区分配置节点、实际实例和业务控制器；颜色不能成为区分状态的唯一方式。先支持桌面演示尺寸与截图，不增加拖拽改策略、手工晋级、账户管理或自动启动模型的按钮。
 
 - [ ] B0 确认最低响应 Schema，准备成功/失败/待采样/缺数据四类 fixture 并标明来源。
-- [ ] 在 `frontend/` 建页面和数据读取适配层，以 fixture 接口开发；保持 API 路径和数据绑定集中管理。
+- [ ] 在 `frontend/` 建页面和数据读取适配层，以 fixture 接口开发；保持 API 路径和数据绑定集中管理。按 FRONTEND_SPEC 先交运行详情/Trace 的桌面、窄屏及异常态样稿，后续四页复用同一套组件。
 - [ ] 测试过滤、详情导航、重复实例、null 指标、断网和缺证据状态。
 - [ ] 交付可启动的页面及演示路线截图样张，不把 fixture 截图当真实运行结果。
 
@@ -130,6 +130,8 @@ B负责完整查询包装和前端适配；A补核心端口；发现不兼容时
 - [ ] 自己的API router已接入且原POST契约测试仍通过，不留下“负责人再写一行才能跑”的事项。
 
 执行Python检查：`uv sync`、`uv run pytest`、`uv run ruff check .`、`uv run ruff format --check .`、`uv run pyright`；前端开工后在其README记录实际安装/构建/测试命令并运行。不要把尚未建好的前端命令宣称通过。
+
+前端的布局、每区内容、动画、按钮行为及异常状态只维护在 FRONTEND_SPEC，本任务书维护交付进度，不另起平行设计稿。
 
 每次按AGENTS汇报，另列“依赖A的交付”“当前采用的数据来源”“尚未填充的素材槽位”。只交付本任务，其他功能不自动开工。
 
