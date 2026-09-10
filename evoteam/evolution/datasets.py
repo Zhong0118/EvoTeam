@@ -21,6 +21,8 @@ class ValidationDatasetProvider(Protocol):
         self, ref: AssetRef, *, partition: DatasetPartition = DatasetPartition.VALIDATION
     ) -> tuple[Task, ...]: ...
 
+    def source_for(self, task: Task, *, partition: DatasetPartition) -> DatasetSource: ...
+
 
 class HistoryEvidenceValidator(Protocol):
     async def validate(self, evidence: Sequence[SealedRun]) -> tuple[DatasetSource, ...]: ...
@@ -126,3 +128,22 @@ class InMemoryValidationDatasets:
             raise ValueError("旧 InMemoryValidationDatasets 只登记 Validation 数据")
         tasks = self._datasets[(ref.id, ref.version)]
         return tuple(task.model_copy(deep=True) for task in tasks)
+
+    def source_for(self, task: Task, *, partition: DatasetPartition) -> DatasetSource:
+        if partition != DatasetPartition.VALIDATION:
+            raise ValueError("旧 InMemoryValidationDatasets 只登记 Validation 数据")
+        matches = [
+            AssetRef(id=key[0], version=key[1])
+            for key, tasks in self._datasets.items()
+            if any(item.task_id == task.task_id for item in tasks)
+        ]
+        if len(matches) != 1:
+            raise ValueError("InMemory Task 必须唯一登记")
+        return DatasetSource(
+            manifest_ref=AssetRef(id="in-memory", version="1"),
+            dataset_ref=matches[0],
+            partition=partition,
+            task_id=task.task_id,
+            task_fingerprint=task_fingerprint(task),
+            subclass=task.task_type.value,
+        )

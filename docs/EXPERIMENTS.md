@@ -103,6 +103,12 @@ Validator 使用相同的验证任务、模型与 Tool 实现版本、随机参�
 
 ## 8. Validation Gate
 
+验证按 `(repeat_index, manifest task order)` 顺序封存 Current/Candidate，并写入不可变 `ValidationPair`；所有汇总均从同一 pair 序列计算。独立任务按 `task_fingerprint` 去重，失败和超时进入成功率分母，未知用量保持 `None`。旧记录缺少 `pairs` 时只能继续采样，不能授权晋级。
+
+延迟分布采用 nearest-rank（升序后索引 `ceil(p*n)-1`）并保存样本数。少于 20 个已知延迟样本的 p95 只作描述性记录，带 `latency_p95_unstable_small_sample`，不作稳定性结论。Runtime 尚未消费 seed，因此实际采样配置保存 `seed_applied=false` 与 `seed_not_applied`。
+
+Gate Policy 必须显式登记配对数、独立任务数和子类成功率退化边界。逐任务成功退化或硬约束错误增加不能被总体改善覆盖。这些字段没有正式默认阈值；示例数字仅用于测试，正式值须在 N4 基线后冻结。
+
 | 维度 | 判定原则 | 未满足时 |
 | --- | --- | --- |
 | 严重错误 | 不引入新的高严重度错误 | Reject |

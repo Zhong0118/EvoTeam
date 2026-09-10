@@ -110,12 +110,12 @@ with pytest.raises(ValueError, match="跨分区"):
 
 **接口约定：** 增加不可变 `ValidationPair`，字段为 task_id、task_fingerprint、subclass、repeat_index、current_run_id、candidate_run_id、current_metrics、candidate_metrics；`ValidationResult.pairs` 保存有序 tuple。旧汇总字段保留兼容；旧记录缺少 pairs 时不能冒充完整配对证据。
 
-- [ ] 构造两道题的真实封存验证：候选在第一题改善、第二题从成功退化为失败，整体错误总数仍下降。测试 Gate 不得仅因总错误下降而 PASS。
-- [ ] 测试重复执行同一道题不会增加独立任务数；失败/超时计入分母，缺失用量保持 None，取消终止批次。
-- [ ] 执行 `uv run pytest tests/test_validation_pairs.py tests/test_gate_regressions.py -q`，观察失败。
-- [ ] Validator 每完成一对封存运行就构造 ValidationPair，并由同一配对序列计算汇总，保存成功数/总数、独立题目数、每个子类的表现和延迟分布。P95 注明算法与样本数，样本不足不下稳定性结论。
-- [ ] Gate 增加显式预注册的独立任务门槛与子类退化约束；未登记或旧记录没有所需证据时继续采样。使用测试专用规则验证边界，不把测试数值写成正式默认参数。
-- [ ] 保存实际采样配置；在 Runtime 尚未支持 seed 时继续记录 seed_not_applied。相同标签不等于相同随机过程，不能为通过验收而移除此限制。
+- [x] 构造两道题的真实封存验证：候选在第一题改善、第二题从成功退化为失败，整体错误总数仍下降。测试 Gate 不得仅因总错误下降而 PASS。
+- [x] 测试重复执行同一道题不会增加独立任务数；失败/超时计入分母，缺失用量保持 None，取消终止批次。
+- [x] 执行 `uv run pytest tests/test_validation_pairs.py tests/test_gate_regressions.py -q`，观察失败。
+- [x] Validator 每完成一对封存运行就构造 ValidationPair，并由同一配对序列计算汇总，保存成功数/总数、独立题目数、每个子类的表现和延迟分布。P95 注明算法与样本数，样本不足不下稳定性结论。
+- [x] Gate 增加显式预注册的独立任务门槛与子类退化约束；未登记或旧记录没有所需证据时继续采样。使用测试专用规则验证边界，不把测试数值写成正式默认参数。
+- [x] 保存实际采样配置；在 Runtime 尚未支持 seed 时继续记录 seed_not_applied。相同标签不等于相同随机过程，不能为通过验收而移除此限制。
 - [ ] 执行配对、Gate、治理和 SDK 回归，更新运行指南并提交独立 PR。
 
 数据形状：

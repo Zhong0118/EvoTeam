@@ -16,6 +16,8 @@ class GatePolicy(FrozenModel):
     maximum_token_increase: NonNegativeFloat
     maximum_latency_increase: NonNegativeFloat
     minimum_paired_runs: Annotated[int, Field(ge=2)] | None = None
+    minimum_independent_tasks: Annotated[int, Field(ge=1)] | None = None
+    maximum_subclass_success_regression: Probability | None = None
     # None 保持旧配置可读，但未经样本量预注册不能晋级。
     # TODO(P4): 质量/效率两类 Gate、严重错误、负迁移与置信规则。
     # 无默认门槛；不把示例数字当作校准值。
@@ -45,6 +47,13 @@ class ValidationGate:
             for claim in improvement.claims
         ):
             raise ValueError("改进归因没有引用本次 Validation")
+        if result.pairs and (
+            tuple(pair.current_run_id for pair in result.pairs) != result.current_run_ids
+            or tuple(pair.candidate_run_id for pair in result.pairs) != result.candidate_run_ids
+            or len({(pair.task_fingerprint, pair.repeat_index) for pair in result.pairs})
+            != len(result.pairs)
+        ):
+            raise ValueError("ValidationPair 与有序 Run 索引不一致或包含重复任务重复次序")
         missing_evidence = False
         reasons: list[str] = []
         failures: list[str] = []
@@ -54,6 +63,49 @@ class ValidationGate:
         ):
             missing_evidence = True
             reasons.append("配对样本门槛未登记或样本不足")
+        if not result.pairs:
+            missing_evidence = True
+            reasons.append("缺少逐任务 ValidationPair；旧聚合记录不能作为完整配对证据")
+        independent_tasks = len({pair.task_fingerprint for pair in result.pairs})
+        if (
+            policy.minimum_independent_tasks is None
+            or independent_tasks < policy.minimum_independent_tasks
+        ):
+            missing_evidence = True
+            reasons.append(f"独立任务数={independent_tasks}，门槛未登记或样本不足")
+        if policy.maximum_subclass_success_regression is None:
+            missing_evidence = True
+            reasons.append("子类成功率退化边界未登记")
+        elif result.pairs:
+            for subclass in sorted({pair.subclass for pair in result.pairs}):
+                members = [pair for pair in result.pairs if pair.subclass == subclass]
+                before = [pair.current_metrics.success for pair in members]
+                after = [pair.candidate_metrics.success for pair in members]
+                if any(value is None for value in before + after):
+                    missing_evidence = True
+                    reasons.append(f"子类 {subclass} 存在未知成功状态")
+                    continue
+                regression = sum(value is True for value in before) / len(before) - sum(
+                    value is True for value in after
+                ) / len(after)
+                reasons.append(f"子类 {subclass} 成功率退化={regression:.6f}")
+                if regression > policy.maximum_subclass_success_regression:
+                    failures.append(f"子类 {subclass} 成功率退化超过允许上限")
+        for pair in result.pairs:
+            if pair.current_metrics.success is True and pair.candidate_metrics.success is not True:
+                failures.append(
+                    f"任务 {pair.task_id} repeat={pair.repeat_index} 从成功退化为失败或未知"
+                )
+            before_errors = pair.current_metrics.hard_constraint_errors
+            after_errors = pair.candidate_metrics.hard_constraint_errors
+            if (
+                before_errors is not None
+                and after_errors is not None
+                and after_errors > before_errors
+            ):
+                failures.append(
+                    f"任务 {pair.task_id} repeat={pair.repeat_index} 引入更多硬约束错误"
+                )
         current = result.current_metrics
         candidate = result.candidate_metrics
 
