@@ -43,7 +43,7 @@
 命令如下，输出数据库不进入 Git，脱敏 `baseline_report.json` 保存代码提交、三份输入摘要、模型非秘密参数、Prompt 引用、预算、运行 ID、评价与实际请求数：
 
 ```bash
-uv run python scripts/run_n4_baseline.py \
+uv run python -m scripts.run_n4_baseline \
   --config examples/experiments/n4_baseline_v0.json \
   --output runs/n4-baseline-v0-history2-r1
 ```

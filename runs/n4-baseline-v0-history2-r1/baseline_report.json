@@ -1,0 +1,375 @@
+{
+  "experiment_id": "n4-baseline-v0-history2-r1",
+  "code_commit": "c1204d3d60ad2bb097bdbdd612b896ba85e6a780",
+  "config_sha256": "57b1619487f9b2f57b446fc8ba54da57b2e36cb29bc5150a0f07f0b1eb799d36",
+  "manifest_sha256": "c4cc51cead1eb4c5f8ae5a5f893b5bfe1e416101f4c081ac0a13e92fd9e9fbb0",
+  "strategy_sha256": "fa1d3d5ec919784b05017a49605669980ba5b039242ad69bd997f44b2c7417bd",
+  "model": {
+    "ref": {
+      "id": "deepseek-v4-flash",
+      "version": "api-2026-09"
+    },
+    "model_name": "deepseek-v4-flash",
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_output_tokens": 4096,
+    "timeout_seconds": 60.0
+  },
+  "prompt_refs": [
+    {
+      "id": "planner",
+      "version": "v0"
+    },
+    {
+      "id": "executor",
+      "version": "v0"
+    },
+    {
+      "id": "critic",
+      "version": "v0"
+    }
+  ],
+  "budget": {
+    "max_tokens": 12000,
+    "max_tool_calls": 0,
+    "timeout_seconds": 180.0
+  },
+  "evaluator_ref": {
+    "id": "project-planning-rules",
+    "version": "1"
+  },
+  "sampling": {
+    "repeats": 1,
+    "seed_applied": false
+  },
+  "request_limit": 18,
+  "requests_used": 17,
+  "runs": [
+    {
+      "run_id": "4256ba2a-6b24-4a9b-a2c6-8c0b44f70b74",
+      "task_id": "history-resource-conflict",
+      "task_scope": "project_planning",
+      "strategy": {
+        "strategy_id": "project-planning",
+        "version": 0
+      },
+      "purpose": "online",
+      "status": "failed",
+      "sealed_at": "2026-09-10T07:36:59.969919Z",
+      "snapshot_ref": "sqlite:run:4256ba2a-6b24-4a9b-a2c6-8c0b44f70b74",
+      "trace_refs": [
+        "6c3bbc7d-3db3-4463-aaec-733b1b80790f",
+        "a22f4078-3397-411f-b3d9-4b808f4bc571",
+        "38836f2e-b7fc-4068-9bbc-0d85375e55c0",
+        "41a4cfa4-3ef0-49a1-9f36-eff2b69dd1f7",
+        "08951256-7878-42ce-864d-74d6f1f34569",
+        "127d14a0-1cac-4a32-89b9-313f118f13a6",
+        "851c1050-53fa-45e3-a30d-c9056fabc056",
+        "8adef10c-734f-42a9-811c-1754a2b92715",
+        "f983766d-7471-4746-97f3-b17ddc36bbe0",
+        "1972e36c-0acf-4f8f-9638-c69b37fb5a94",
+        "8770dc37-6995-4367-85d6-1fa4097c6abe"
+      ],
+      "evaluation": {
+        "run_id": "4256ba2a-6b24-4a9b-a2c6-8c0b44f70b74",
+        "evaluator_ref": {
+          "id": "project-planning-rules",
+          "version": "1"
+        },
+        "metrics": {
+          "quality": null,
+          "success": false,
+          "hard_constraint_errors": 1,
+          "tokens": null,
+          "cost": null,
+          "latency_seconds": 9.292338083032519,
+          "agent_count": 2,
+          "tool_calls": 0,
+          "retry_count": 0
+        },
+        "issues": [
+          {
+            "code": "missing_or_ambiguous_plan",
+            "message": "需要唯一的项目计划产物",
+            "severity": "error",
+            "evidence_refs": [
+              "run:4256ba2a-6b24-4a9b-a2c6-8c0b44f70b74/results"
+            ],
+            "node_id": null
+          }
+        ],
+        "missing_metrics": [
+          "quality",
+          "tokens",
+          "cost"
+        ]
+      },
+      "output_ref": null
+    },
+    {
+      "run_id": "e6972bfe-fe17-4da1-a76b-234fa3d95b6f",
+      "task_id": "history-dependency-chain",
+      "task_scope": "project_planning",
+      "strategy": {
+        "strategy_id": "project-planning",
+        "version": 0
+      },
+      "purpose": "online",
+      "status": "completed",
+      "sealed_at": "2026-09-10T07:37:05.697824Z",
+      "snapshot_ref": "sqlite:run:e6972bfe-fe17-4da1-a76b-234fa3d95b6f",
+      "trace_refs": [
+        "eeac4da2-a7c7-4277-a8e1-48367f23bbc2",
+        "b3c45b86-3a61-4698-9336-a88d9cfa376a",
+        "0b84ce57-fa88-4771-8ad7-838ef0995759",
+        "30f33a95-c252-47b0-bc91-0fc30a111d9e",
+        "09a260ae-6468-428f-b459-977620aeb07e",
+        "6fc0adf1-b01e-461d-aab2-ddcd14216268",
+        "e0eeb4eb-6d45-40d9-ba5d-0abff7d4f9c6",
+        "a816d005-0612-487e-9c26-efc662a7b390",
+        "17fe4af7-0698-4d0c-b629-abfd3888e477",
+        "4f0652bf-be98-4e17-9ad4-76829bfc6082",
+        "a720db2a-fc43-400d-adf3-b232339c9192",
+        "37d38c02-70ba-4562-b8b8-bd89705bb229",
+        "b6e29c9c-e313-43d5-ae08-25287470d9a6",
+        "9aa36085-cd1f-420e-8707-3f1550ab0f51"
+      ],
+      "evaluation": {
+        "run_id": "e6972bfe-fe17-4da1-a76b-234fa3d95b6f",
+        "evaluator_ref": {
+          "id": "project-planning-rules",
+          "version": "1"
+        },
+        "metrics": {
+          "quality": null,
+          "success": true,
+          "hard_constraint_errors": 0,
+          "tokens": 3567,
+          "cost": null,
+          "latency_seconds": 5.721711250022054,
+          "agent_count": 3,
+          "tool_calls": 0,
+          "retry_count": 0
+        },
+        "issues": [],
+        "missing_metrics": [
+          "quality",
+          "cost"
+        ]
+      },
+      "output_ref": null
+    },
+    {
+      "run_id": "814fc32d-6350-47ab-9fce-794ea92cf216",
+      "task_id": "history-resource-conflict-content",
+      "task_scope": "project_planning",
+      "strategy": {
+        "strategy_id": "project-planning",
+        "version": 0
+      },
+      "purpose": "online",
+      "status": "completed",
+      "sealed_at": "2026-09-10T07:37:11.092237Z",
+      "snapshot_ref": "sqlite:run:814fc32d-6350-47ab-9fce-794ea92cf216",
+      "trace_refs": [
+        "7c84ba9d-feb0-4f6f-ba9f-b4d00f91e824",
+        "363a4cec-d924-4c2c-a845-0e65a01bebe0",
+        "e6e15fec-4116-4797-a07e-5ade7fd05043",
+        "bef16d3c-326f-4636-b9c0-2f9d98080808",
+        "eb7ffdc1-c75c-415a-9d26-b821947d23c0",
+        "5c7130f3-982a-4a5c-a1f6-f56e3cf1368f",
+        "558c829b-f589-4172-9dbe-b0629d21dd54",
+        "5ed35a0c-aae6-4157-b282-6b0518c67ea0",
+        "29831ebe-f314-4441-b526-fa9713a68836",
+        "769b3cd0-947b-46ab-89d8-ec32b42fe6e1",
+        "49550c15-2c15-497a-a850-144450b05225",
+        "3031e5ad-9629-4dd4-93d4-722cdc909c3e",
+        "bbd03e20-dc00-48c4-9831-98cd8be21dac",
+        "3fde283e-3b97-4e03-9eec-23ecb6fc805f"
+      ],
+      "evaluation": {
+        "run_id": "814fc32d-6350-47ab-9fce-794ea92cf216",
+        "evaluator_ref": {
+          "id": "project-planning-rules",
+          "version": "1"
+        },
+        "metrics": {
+          "quality": null,
+          "success": true,
+          "hard_constraint_errors": 0,
+          "tokens": 3360,
+          "cost": null,
+          "latency_seconds": 5.388832500088029,
+          "agent_count": 3,
+          "tool_calls": 0,
+          "retry_count": 0
+        },
+        "issues": [],
+        "missing_metrics": [
+          "quality",
+          "cost"
+        ]
+      },
+      "output_ref": null
+    },
+    {
+      "run_id": "96df626b-aceb-4dcd-9cfe-8ca7c690c814",
+      "task_id": "history-resource-conflict-release",
+      "task_scope": "project_planning",
+      "strategy": {
+        "strategy_id": "project-planning",
+        "version": 0
+      },
+      "purpose": "online",
+      "status": "completed",
+      "sealed_at": "2026-09-10T07:37:17.923543Z",
+      "snapshot_ref": "sqlite:run:96df626b-aceb-4dcd-9cfe-8ca7c690c814",
+      "trace_refs": [
+        "927653a0-cb13-473c-8113-7b881c782ceb",
+        "408000f0-14e3-4796-8fcc-f174e95609ed",
+        "73085872-cfd2-421d-b88c-43177538a2de",
+        "eb7bfcc4-f2d1-4bfd-98cb-f80f6640b802",
+        "e4b3ac4c-cb5a-4b5e-9930-d164b4c6266d",
+        "e00d017f-7e61-4628-9677-0a44e1dfb735",
+        "66a18509-83f5-43a8-aa6c-5b1c410fe7ee",
+        "5f2e50f8-554b-48e1-92e0-20c9f6cf1141",
+        "500f2f55-be13-4216-b949-cbcfd9e1b37c",
+        "ea57ec4d-42f3-43f5-8c81-f25b1504a82a",
+        "05c0e21e-6f74-49c4-8a6e-75313607462e",
+        "ef1b9d47-fdf1-4c7e-be11-f086e0dbf198",
+        "d662d9e6-2176-444c-bc78-ecca422e4d1c",
+        "f3098a9b-8b40-4b8a-b8f5-ada870e3f14e"
+      ],
+      "evaluation": {
+        "run_id": "96df626b-aceb-4dcd-9cfe-8ca7c690c814",
+        "evaluator_ref": {
+          "id": "project-planning-rules",
+          "version": "1"
+        },
+        "metrics": {
+          "quality": null,
+          "success": true,
+          "hard_constraint_errors": 0,
+          "tokens": 4458,
+          "cost": null,
+          "latency_seconds": 6.827160332934,
+          "agent_count": 3,
+          "tool_calls": 0,
+          "retry_count": 0
+        },
+        "issues": [],
+        "missing_metrics": [
+          "quality",
+          "cost"
+        ]
+      },
+      "output_ref": null
+    },
+    {
+      "run_id": "0289e78f-12bd-43da-b4c4-1ac63b953d4a",
+      "task_id": "history-dependency-data-pipeline",
+      "task_scope": "project_planning",
+      "strategy": {
+        "strategy_id": "project-planning",
+        "version": 0
+      },
+      "purpose": "online",
+      "status": "completed",
+      "sealed_at": "2026-09-10T07:37:23.958103Z",
+      "snapshot_ref": "sqlite:run:0289e78f-12bd-43da-b4c4-1ac63b953d4a",
+      "trace_refs": [
+        "2c702130-f54c-4f0a-b3d8-70a0c4ac44a6",
+        "f406f7bf-4c95-418b-8cc4-84495bb0af4c",
+        "8fd7fc2e-b0c8-4e34-bd41-7a86c884f556",
+        "628c61ac-0e71-4220-bd20-796ce5bc71df",
+        "d9961e34-3266-43f3-9ec6-faf2c7bfa499",
+        "b6243b39-8daa-4bcd-ab55-63bae9b74057",
+        "24ff61f2-f5e4-4188-99d7-ca6ed15c21e1",
+        "8ce3b22d-3339-4b6f-84a9-1a2eab194675",
+        "9c4bbe5b-eb09-48e1-b5c6-41c7b7112444",
+        "898f50a5-3e9b-4d7a-8041-e82b58062a28",
+        "dd893d62-0f6f-44a3-bfff-ecf03324bb62",
+        "0eb94e9c-ac28-461a-9b30-01fa8d6aa469",
+        "67e1b4ab-00c4-48f0-8295-662c8e30abfb",
+        "3f2ea10d-249a-44e0-b8c4-a88d145545bf"
+      ],
+      "evaluation": {
+        "run_id": "0289e78f-12bd-43da-b4c4-1ac63b953d4a",
+        "evaluator_ref": {
+          "id": "project-planning-rules",
+          "version": "1"
+        },
+        "metrics": {
+          "quality": null,
+          "success": true,
+          "hard_constraint_errors": 0,
+          "tokens": 4213,
+          "cost": null,
+          "latency_seconds": 6.028696833993308,
+          "agent_count": 3,
+          "tool_calls": 0,
+          "retry_count": 0
+        },
+        "issues": [],
+        "missing_metrics": [
+          "quality",
+          "cost"
+        ]
+      },
+      "output_ref": null
+    },
+    {
+      "run_id": "2b429328-0734-45a0-a344-64f02926d8a7",
+      "task_id": "history-dependency-release-approval",
+      "task_scope": "project_planning",
+      "strategy": {
+        "strategy_id": "project-planning",
+        "version": 0
+      },
+      "purpose": "online",
+      "status": "completed",
+      "sealed_at": "2026-09-10T07:37:30.360182Z",
+      "snapshot_ref": "sqlite:run:2b429328-0734-45a0-a344-64f02926d8a7",
+      "trace_refs": [
+        "8d82ec07-6bbd-4acd-8ce8-2361b67755a7",
+        "2b1b7ed5-5f2a-4387-bf6b-1ce11ff9b7b4",
+        "31e3f214-13dc-447d-92f9-4f01497052df",
+        "a1b85a91-d1a3-4381-b1e6-766dccd8f8d0",
+        "1bed9eaa-39e8-4bf6-b60c-58f5bfb0356a",
+        "4bb1f7ed-9167-4a60-9164-f77182729fc6",
+        "d1ec19aa-cbf6-40b1-b835-31a5114b0e0d",
+        "dc7ca946-a048-4b53-82d6-99a657fc964b",
+        "1e43a489-81d4-4f98-90cf-207be5fbbb83",
+        "9e30cd19-2ce1-4962-b4b9-2d6c71d081cd",
+        "f6f6c412-36db-4aad-bf77-906bc87c490f",
+        "01a7ae07-30c3-40a8-ae40-12a0ac582544",
+        "29f60ce4-a4f9-4756-a606-f8f662c7024b",
+        "0e65b9ba-3cca-45a2-8f62-f24b2b0a5856"
+      ],
+      "evaluation": {
+        "run_id": "2b429328-0734-45a0-a344-64f02926d8a7",
+        "evaluator_ref": {
+          "id": "project-planning-rules",
+          "version": "1"
+        },
+        "metrics": {
+          "quality": null,
+          "success": true,
+          "hard_constraint_errors": 0,
+          "tokens": 4297,
+          "cost": null,
+          "latency_seconds": 6.397682667011395,
+          "agent_count": 3,
+          "tool_calls": 0,
+          "retry_count": 0
+        },
+        "issues": [],
+        "missing_metrics": [
+          "quality",
+          "cost"
+        ]
+      },
+      "output_ref": null
+    }
+  ]
+}

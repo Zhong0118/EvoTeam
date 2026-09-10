@@ -133,7 +133,7 @@ assert all(p.current_run_id != p.candidate_run_id for p in result.pairs)
 **产物：** 更新 `docs/EXPERIMENTS.md` 的有效协议；配置保存在 `examples/experiments/`，脱敏报告保存在 `runs/<experiment_id>/`，数据库、日志和密钥不入 Git。
 
 - [ ] 使用 N2 清单，在调用模型前登记代码提交、数据摘要、模型/Prompt/评价器版本、预算、温度和 top_p，以及请求次数上限；有效凭据仅留本地环境。
-- [ ] 先在 History 分区运行固定 v0，报告每类任务成功率、错误类型、Token、耗时、超时和返工次数。样本不足时补充数据，不直接降低 Gate。
+- [x] 先在 History 分区运行固定 v0，报告每类任务成功率、错误类型、Token、耗时、超时和返工次数。样本不足时补充数据，不直接降低 Gate。
 - [ ] 根据基线波动登记新的 Monitor/Gate Policy 版本：窗口、触发、冷却、独立任务数、重复数、收益和成本边界、候选选择及验证复用次数。由团队复核后冻结。
 - [ ] 按固定协议比较 Current、Prompt Candidate 和 Verifier Candidate；每个候选保存直接证据、差异、完整 Validation 和 Gate。全部 Reject 是有效结果。
 - [ ] 只有候选通过冻结规则才晋级；用未参与选择的未来任务和 Final Test 检查效果。最终测试不用于反复选候选或改门槛。
