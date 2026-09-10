@@ -1,0 +1,165 @@
+{
+  "ref": {"id": "project-planning-manifest", "version": "1"},
+  "datasets": [
+    {
+      "ref": {"id": "project-planning-history", "version": "1"},
+      "partition": "history",
+      "tasks": [
+        {
+          "task_id": "history-resource-conflict",
+          "task_fingerprint": "717ce1657a5d574d642d757071fcf64daa52e683d23a6d305238a997381fbb2d",
+          "subclass": "resource_conflict",
+          "human_review": "结构合法且存在顺序可行解；用于检查同一人员的重叠排期。",
+          "task": {
+            "task_id": "history-resource-conflict",
+            "task_type": "project_planning",
+            "instruction": "为单人承担设计与实现的项目制定无资源冲突计划。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成设计与实现",
+              "deadline_hour": 8,
+              "budget_minor": 800,
+              "currency": "CNY",
+              "people": [{"person_id": "alice", "skills": ["design", "python"], "hourly_cost_minor": 100, "available_from_hour": 0, "available_until_hour": 8}],
+              "work_items": [
+                {"work_id": "design", "description": "完成设计", "duration_hours": 2, "required_skills": ["design"], "dependencies": []},
+                {"work_id": "build", "description": "完成实现", "duration_hours": 4, "required_skills": ["python"], "dependencies": []}
+              ],
+              "milestones": [{"milestone_id": "delivery", "work_ids": ["design", "build"], "deadline_hour": 8}]
+            }
+          }
+        },
+        {
+          "task_id": "history-dependency-chain",
+          "task_fingerprint": "edb83b91eec22a55e114d72dcee969aa714b934cf6f4c46320af3207eb47fe5c",
+          "subclass": "dependency",
+          "human_review": "三段依赖链无环且可在期限内顺序完成。",
+          "task": {
+            "task_id": "history-dependency-chain",
+            "task_type": "project_planning",
+            "instruction": "按需求、开发、验收的依赖顺序安排项目。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成有依赖关系的交付",
+              "deadline_hour": 10,
+              "budget_minor": 1000,
+              "currency": "CNY",
+              "people": [{"person_id": "bob", "skills": ["analysis", "python", "qa"], "hourly_cost_minor": 100, "available_from_hour": 0, "available_until_hour": 10}],
+              "work_items": [
+                {"work_id": "requirements", "description": "整理需求", "duration_hours": 2, "required_skills": ["analysis"], "dependencies": []},
+                {"work_id": "implementation", "description": "实现功能", "duration_hours": 4, "required_skills": ["python"], "dependencies": ["requirements"]},
+                {"work_id": "acceptance", "description": "验收功能", "duration_hours": 2, "required_skills": ["qa"], "dependencies": ["implementation"]}
+              ],
+              "milestones": [{"milestone_id": "accepted", "work_ids": ["requirements", "implementation", "acceptance"], "deadline_hour": 10}]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "ref": {"id": "project-planning-validation", "version": "1"},
+      "partition": "validation",
+      "tasks": [
+        {
+          "task_id": "validation-resource-sequence",
+          "task_fingerprint": "a96ae47b0fb01ceb6c4efe04f1a2f20926554b4a4121823792f347b254c6e180",
+          "subclass": "deadline",
+          "human_review": "两项工作恰好在紧期限内完成，边界按半开区间复核。",
+          "task": {
+            "task_id": "validation-resource-sequence",
+            "task_type": "project_planning",
+            "instruction": "在紧期限内安排连续设计和实现。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "按期完成设计与实现",
+              "deadline_hour": 6,
+              "budget_minor": 720,
+              "currency": "CNY",
+              "people": [{"person_id": "carol", "skills": ["design", "python"], "hourly_cost_minor": 120, "available_from_hour": 0, "available_until_hour": 6}],
+              "work_items": [
+                {"work_id": "design", "description": "设计方案", "duration_hours": 2, "required_skills": ["design"], "dependencies": []},
+                {"work_id": "build", "description": "实现方案", "duration_hours": 4, "required_skills": ["python"], "dependencies": ["design"]}
+              ],
+              "milestones": [{"milestone_id": "delivery", "work_ids": ["design", "build"], "deadline_hour": 6}]
+            }
+          }
+        },
+        {
+          "task_id": "validation-skill-routing",
+          "task_fingerprint": "5a695ce3e79372ecca52c9b4e176bcc7b49a04587bd94c44d2d55e21324f1fbc",
+          "subclass": "skill",
+          "human_review": "前端和后端任务必须分配给具备对应技能的不同人员。",
+          "task": {
+            "task_id": "validation-skill-routing",
+            "task_type": "project_planning",
+            "instruction": "按人员技能安排前后端并行开发。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成前后端开发",
+              "deadline_hour": 5,
+              "budget_minor": 900,
+              "currency": "CNY",
+              "people": [
+                {"person_id": "dana", "skills": ["frontend"], "hourly_cost_minor": 100, "available_from_hour": 0, "available_until_hour": 5},
+                {"person_id": "erin", "skills": ["backend"], "hourly_cost_minor": 125, "available_from_hour": 0, "available_until_hour": 5}
+              ],
+              "work_items": [
+                {"work_id": "ui", "description": "实现界面", "duration_hours": 4, "required_skills": ["frontend"], "dependencies": []},
+                {"work_id": "api", "description": "实现接口", "duration_hours": 4, "required_skills": ["backend"], "dependencies": []}
+              ],
+              "milestones": [{"milestone_id": "integration", "work_ids": ["ui", "api"], "deadline_hour": 5}]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "ref": {"id": "project-planning-final-test", "version": "1"},
+      "partition": "final_test",
+      "tasks": [
+        {
+          "task_id": "final-budget-boundary",
+          "task_fingerprint": "f456cf90efecf64d23b0cb4659d7eb987d938e646f9f7f99382cebda959bd48f",
+          "subclass": "budget",
+          "human_review": "唯一工作按登记费率执行时恰好达到预算上限。",
+          "task": {
+            "task_id": "final-budget-boundary",
+            "task_type": "project_planning",
+            "instruction": "在不超过预算的前提下完成审计。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成预算边界审计",
+              "deadline_hour": 5,
+              "budget_minor": 600,
+              "currency": "CNY",
+              "people": [{"person_id": "frank", "skills": ["audit"], "hourly_cost_minor": 150, "available_from_hour": 0, "available_until_hour": 5}],
+              "work_items": [{"work_id": "audit", "description": "执行审计", "duration_hours": 4, "required_skills": ["audit"], "dependencies": []}],
+              "milestones": [{"milestone_id": "report", "work_ids": ["audit"], "deadline_hour": 5}]
+            }
+          }
+        },
+        {
+          "task_id": "final-valid-infeasible",
+          "task_fingerprint": "dc41f4c0431fdea6a5444b63e53e4fd787a9314c9396ba050dbb4d76c4dd2e78",
+          "subclass": "valid_infeasible",
+          "human_review": "输入满足 Schema，但无人具备 security 技能，因此没有合法排期。",
+          "task": {
+            "task_id": "final-valid-infeasible",
+            "task_type": "project_planning",
+            "instruction": "判断并处理该结构合法但不可行的安全评审项目。",
+            "input_schema": {"id": "project-planning-input", "version": "1"},
+            "inputs": {
+              "goal": "完成安全评审",
+              "deadline_hour": 4,
+              "budget_minor": 400,
+              "currency": "CNY",
+              "people": [{"person_id": "gina", "skills": ["qa"], "hourly_cost_minor": 100, "available_from_hour": 0, "available_until_hour": 4}],
+              "work_items": [{"work_id": "security-review", "description": "执行安全评审", "duration_hours": 2, "required_skills": ["security"], "dependencies": []}],
+              "milestones": [{"milestone_id": "security-approved", "work_ids": ["security-review"], "deadline_hour": 4}]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

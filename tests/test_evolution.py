@@ -44,7 +44,10 @@ def test_packaged_validation_dataset_resolves_by_versioned_reference():
     tasks = PackagedValidationDatasets().load(
         AssetRef(id="project-planning-validation", version="1")
     )
-    assert tuple(task.task_id for task in tasks) == ("validation-resource-sequence",)
+    assert tuple(task.task_id for task in tasks) == (
+        "validation-resource-sequence",
+        "validation-skill-routing",
+    )
 
 
 def configured_current() -> Strategy:
@@ -174,6 +177,11 @@ class FixedEvidenceAttributor(OutcomeAttributor):
         )
 
 
+class FixtureHistoryValidator:
+    async def validate(self, evidence):
+        return ()
+
+
 @pytest.mark.asyncio
 async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
     storage = SQLiteStorage(f"sqlite:///{tmp_path / 'evolution.db'}")
@@ -201,6 +209,7 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
         lifecycle=StrategyLifecycle(ports.strategies),
         strategies=ports.strategies,
         records=ports.evolutions,
+        history_validator=FixtureHistoryValidator(),
     )
     evidence = failure_evidence(current)
     policy = EvolutionPolicy(
@@ -380,6 +389,7 @@ async def test_multiple_candidates_select_one_and_persist_full_artifacts(tmp_pat
         lifecycle=StrategyLifecycle(ports.strategies),
         strategies=ports.strategies,
         records=ports.evolutions,
+        history_validator=FixtureHistoryValidator(),
     )
     evidence = failure_evidence(current)
     policy = EvolutionPolicy(

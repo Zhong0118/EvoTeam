@@ -24,6 +24,22 @@
 
 数据划分与版本在实验开始前登记。验证结果可以形成治理证据，但不能把验证答案或反复试探同一集合变成新的隐性训练集。若需要新的候选生成轮次，应按预注册协议控制验证复用、轮次与独立评测。
 
+### 2.1 数据清单与内容身份
+
+首个项目规划清单为 `project-planning-manifest@1`，文件位于 `examples/datasets/project_planning_manifest.json`。三个分区分别登记为：
+
+| 分区 | AssetRef | 当前人工复核子类 |
+| --- | --- | --- |
+| History | `project-planning-history@1` | `resource_conflict`、`dependency` |
+| Validation | `project-planning-validation@1` | `deadline`、`skill` |
+| Final Test | `project-planning-final-test@1` | `budget`、`valid_infeasible` |
+
+`valid_infeasible` 表示输入通过固定 Task/PlanningInput Schema，但不存在满足技能等硬约束的合法排期，不表示输入格式损坏。当前每个子类只有一条人工复核题，足以覆盖隔离和执行路径，不足以支持子类稳定性或真实收益结论；N4 基线前应按预注册样本量扩充。
+
+任务内容摘要固定为 SHA-256：仅对 `task_type`、`input_schema`、`inputs` 做规范 JSON 编码，使用 UTF-8、键排序和固定分隔符。`task_id` 与 `instruction` 被排除，因此只改 ID、改写指令或调整 JSON 键顺序不能把同一结构化题目放进其他分区。该摘要用于发现完全相同的结构化输入，不声称能识别语义改写、数值扰动或所有同构题目。
+
+清单加载时重新计算并核对每条摘要；未登记引用、同引用内容变化、空分区、重复 ID 和跨分区内容重复均在模型调用前拒绝。Validator 只能把 `validation` 数据集作为 `ValidationPlan.dataset_ref`，`final_test` 引用不能进入候选选择。EvolutionManager 在归因和候选生成前，通过封存 Run 的 `RunSnapshot.task` 只反查 History 登记，不加载 Validation 或 Final Test；反查结果包含 manifest、dataset、task fingerprint 与 subclass，可用于从历史 Run 追溯清单版本。CandidateGenerator 的输入仍只有 Current Strategy、Failure Attribution 和 Policy。
+
 ## 3. 对照与消融
 
 | 方案 | 设置 | 回答的问题 |

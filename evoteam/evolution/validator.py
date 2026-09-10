@@ -5,6 +5,7 @@ from statistics import fmean
 from typing import Protocol
 from uuid import uuid4
 
+from evoteam.domain.dataset import DatasetPartition
 from evoteam.domain.evaluation import RunMetrics
 from evoteam.domain.evolution import ValidationPlan, ValidationResult
 from evoteam.domain.run import RunPurpose, RunStatus
@@ -72,7 +73,7 @@ class Validator:
                 for source in originals.values()
             ):
                 raise ValueError("公平比较的新增节点必须沿用已登记的模型和能力限制")
-        tasks = self.datasets.load(plan.dataset_ref)
+        tasks = self.datasets.load(plan.dataset_ref, partition=DatasetPartition.VALIDATION)
         if not tasks:
             raise ValueError("验证集不能为空")
         if len(plan.seeds) != plan.repeats:

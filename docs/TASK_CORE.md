@@ -87,7 +87,7 @@ assert await ports.runs.read_snapshot(run_id) == original_snapshot
 
 **接口约定：** `task_fingerprint(task: Task) -> str`；`validate_partitions(partitions: Mapping[str, Sequence[Task]]) -> None`，分区键固定为 `history`、`validation`、`final_test`。清单保存 AssetRef、分区、task_id、内容摘要和预先定义的任务子类。
 
-- [ ] 添加以下身份改名不能逃过检查的测试，以及空分区、重复 ID、同引用内容变更的失败测试。
+- [x] 添加以下身份改名不能逃过检查的测试，以及空分区、重复 ID、同引用内容变更的失败测试。
 
 ```python
 renamed = task.model_copy(update={"task_id": "new-id"}, deep=True)
@@ -96,10 +96,10 @@ with pytest.raises(ValueError, match="跨分区"):
     validate_partitions({"history": [task], "validation": [renamed], "final_test": [other]})
 ```
 
-- [ ] 执行 `uv run pytest tests/test_dataset_isolation.py -q`，观察失败。
-- [ ] 摘要使用 task_type、input_schema、inputs 的规范 JSON：键排序、固定分隔符、UTF-8、SHA-256；排除 task_id 和 instruction，使仅换 ID 或改写指令不能复用同一结构化题目。此规则用于检测内容重复，不声称能检测所有同构题目。
-- [ ] 验证器加载题目前校验分区和摘要；Manager 在候选生成前只验证历史来源，候选生成器仍只接归因和策略，不能得到验证题目或答案。Final Test 禁止作为 ValidationPlan 的数据集引用。
-- [ ] 注册资源冲突、依赖、期限、技能、预算、合法不可行输入等子类；每条题目有独立 ID、内容与人工复核记录。用例数量依覆盖需要确定，正式实验样本量由 N4 预注册。
+- [x] 执行 `uv run pytest tests/test_dataset_isolation.py -q`，观察失败。
+- [x] 摘要使用 task_type、input_schema、inputs 的规范 JSON：键排序、固定分隔符、UTF-8、SHA-256；排除 task_id 和 instruction，使仅换 ID 或改写指令不能复用同一结构化题目。此规则用于检测内容重复，不声称能检测所有同构题目。
+- [x] 验证器加载题目前校验分区和摘要；Manager 在候选生成前只验证历史来源，候选生成器仍只接归因和策略，不能得到验证题目或答案。Final Test 禁止作为 ValidationPlan 的数据集引用。
+- [x] 注册资源冲突、依赖、期限、技能、预算、合法不可行输入等子类；每条题目有独立 ID、内容与人工复核记录。用例数量依覆盖需要确定，正式实验样本量由 N4 预注册。
 - [ ] 执行隔离回归、原 Validator 与治理测试，更新实验协议并提交独立 PR。
 
 **验收：** 换 ID、换 instruction 或重排 JSON 键不能把同题混入不同分区；未登记、摘要不符和 Final Test 引用在模型调用前拒绝。历史运行必须能反查数据清单版本。

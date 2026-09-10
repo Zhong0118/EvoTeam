@@ -6,7 +6,7 @@ from evoteam.application import EvolutionService, TaskService
 from evoteam.domain.events import TraceEvent
 from evoteam.evaluation.evaluator import ProjectPlanningEvaluator
 from evoteam.evolution.attribution import OutcomeAttributor
-from evoteam.evolution.datasets import PackagedValidationDatasets
+from evoteam.evolution.datasets import ManifestHistoryValidator, PackagedValidationDatasets
 from evoteam.evolution.gate import ValidationGate
 from evoteam.evolution.lifecycle import StrategyLifecycle
 from evoteam.evolution.manager import EvolutionManager
@@ -53,12 +53,13 @@ def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTea
     tasks = TaskService(analyzer, orchestrator, evaluator, storage.runs, storage.strategies)
 
     # 验证复用同一执行器和评价器；不能另建一套更宽松的 Candidate 评分流程。
+    datasets = PackagedValidationDatasets()
     validator = Validator(
         orchestrator,
         evaluator,
         analyzer,
         storage.runs,
-        PackagedValidationDatasets(),
+        datasets,
     )
     manager = EvolutionManager(
         attributor=OutcomeAttributor(storage.runs),
@@ -68,6 +69,7 @@ def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTea
         lifecycle=StrategyLifecycle(storage.strategies),
         strategies=storage.strategies,
         records=storage.evolutions,
+        history_validator=ManifestHistoryValidator(datasets, storage.runs),
     )
     # Store 只存数据、Aggregator 提炼经验、Monitor 看趋势、Manager 管离线流程。
     evolution = EvolutionService(
