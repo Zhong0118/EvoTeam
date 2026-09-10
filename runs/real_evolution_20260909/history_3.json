@@ -1,0 +1,63 @@
+{
+  "run_id": "b394c02f-6523-465f-9409-d9cc3e755196",
+  "task_id": "infeasible-delivery-diagnostic",
+  "task_scope": "project_planning",
+  "strategy": {
+    "strategy_id": "project-planning",
+    "version": 0
+  },
+  "purpose": "online",
+  "status": "completed",
+  "sealed_at": "2026-09-09T12:14:25.783036Z",
+  "snapshot_ref": "sqlite:run:b394c02f-6523-465f-9409-d9cc3e755196",
+  "trace_refs": [
+    "e1de1983-5ce0-4330-add1-fc42bb5cfaab",
+    "b38ae7ab-7483-4d30-adc1-5d96d22b513f",
+    "9cc910a8-69a6-4081-830a-c6cfbaa5727e",
+    "1599c674-cb47-4ce4-8da5-fd2072a0748b",
+    "165f2cef-5a15-4727-9122-aefa79a24a8d",
+    "8b7129e1-4ffb-4805-9b44-b43127340f8b",
+    "81204184-3e31-4340-8b72-e573b1dc9aa6",
+    "f4ef206d-5a69-40e9-9312-c6924f7a179e",
+    "29545485-897f-49b6-8a3d-7f826935b410",
+    "5463ad62-8cae-45d2-be81-6f7f058f9682",
+    "98614682-15c6-450e-9eb0-77dafaa91e4b",
+    "18e79c16-995d-4c70-8b60-4b92f991c46d",
+    "c8e24a0a-278f-4880-936a-ad1001ec1c64",
+    "63234f6f-43a4-457f-918b-c5746486513c"
+  ],
+  "evaluation": {
+    "run_id": "b394c02f-6523-465f-9409-d9cc3e755196",
+    "evaluator_ref": {
+      "id": "project-planning-rules",
+      "version": "1"
+    },
+    "metrics": {
+      "quality": null,
+      "success": false,
+      "hard_constraint_errors": 1,
+      "tokens": 2595,
+      "cost": null,
+      "latency_seconds": 6.1056267090607435,
+      "agent_count": 3,
+      "tool_calls": 0,
+      "retry_count": 0
+    },
+    "issues": [
+      {
+        "code": "duration_mismatch",
+        "message": "工期与输入要求不符",
+        "severity": "error",
+        "evidence_refs": [
+          "work:build"
+        ],
+        "node_id": null
+      }
+    ],
+    "missing_metrics": [
+      "quality",
+      "cost"
+    ]
+  },
+  "output_ref": null
+}

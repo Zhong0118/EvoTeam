@@ -78,7 +78,7 @@ Strategy
     └── lifecycle_status
 ```
 
-这是领域契约；`evoteam/domain/` 已提供初始 Pydantic 模型。项目规划 v1 已提供具体输入、计划、分析和审查 Schema。固定 v0 的节点、连边、Prompt 引用、运行上限和不支持能力由执行器检查；通用候选图、模型/Tool 注册与权限验证仍待实现。具体单位和运行路径见 [系统运行指南](SYSTEM_WALKTHROUGH.md)。Task 和消息沿用 JSON 信封，规划产物按固定 Schema 解析。引用必须能解析到固定版本，保证旧 Strategy 可还原。
+这是领域契约；`evoteam/domain/` 已提供 Pydantic 模型。项目规划 v1 已提供具体输入、计划、分析和审查 Schema。执行器检查节点、连边、Prompt 引用、运行上限和不支持能力；当前只开放固定 v0、可选唯一 Verifier 分支和一次有界返工，任意候选图、模型/Tool 注册与权限验证仍待实现。具体单位和运行路径见 [系统运行指南](SYSTEM_WALKTHROUGH.md)。Task 和消息沿用 JSON 信封，规划产物按固定 Schema 解析。
 
 Topology 描述有向节点与信息流；OrchestrationPolicy 描述顺序、并行、条件、Retry、Replan、Routing 和 Stop 规则。表达能力可以逐步实现，未实现的结构应明确拒绝，不得静默降级或交给 LLM 自由执行。
 
@@ -203,9 +203,9 @@ OpenJiuwenRuntimeAdapter
 openJiuwen Core → Model / Tool / Workflow / ReAct
 ```
 
-EvoTeam 保存可序列化配置、运行证据和版本治理。Adapter 的目标职责是把 AgentConfig 映射为真实 SDK Agent，并把运行回调转换为统一 TraceEvent；Adapter 已延迟加载锁定的 ReActAgent，实现单次、无工具、无重试的结构化调用和用量转换；真实 SDK 使用本地 HTTP 完成联调，外部服务仍待实际配置验收。使用底层 Workflow 能力不能把 EvoTeam 的权限、预算与控制职责绕过。
+EvoTeam 保存可序列化配置、运行证据和版本治理。Adapter 的目标职责是把 AgentConfig 映射为真实 SDK Agent，并把运行回调转换为统一 TraceEvent；Adapter 已延迟加载锁定的 ReActAgent，实现单次、无工具、无重试的结构化调用和用量转换；真实 SDK 使用本地 HTTP 完成联调，仓库另保留组员提交的外部服务回归记录；充分样本的效果验收仍待完成。使用底层 Workflow 能力不能把 EvoTeam 的权限、预算与控制职责绕过。
 
-模块布局（固定 v0 的无模型在线闭环已实现，真实 SDK 与重复失败观察已接入，离线演进仍待填充）：
+模块布局（v0 在线闭环、受限 Verifier DAG/返工、真实 SDK、重复失败观察及多候选演进已接入）：
 
 ```text
 evoteam/

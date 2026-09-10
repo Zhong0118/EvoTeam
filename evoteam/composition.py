@@ -6,6 +6,7 @@ from evoteam.application import EvolutionService, TaskService
 from evoteam.domain.events import TraceEvent
 from evoteam.evaluation.evaluator import ProjectPlanningEvaluator
 from evoteam.evolution.attribution import OutcomeAttributor
+from evoteam.evolution.datasets import PackagedValidationDatasets
 from evoteam.evolution.gate import ValidationGate
 from evoteam.evolution.lifecycle import StrategyLifecycle
 from evoteam.evolution.manager import EvolutionManager
@@ -41,8 +42,8 @@ class EvoTeamApplication:
 def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTeamApplication:
     """把已经构造好的 Runtime 与 Repository 接入当前组件。
 
-    已支持固定 v0 + 项目规划规则评价 + SQLite 在线封存。
-    真实 SDK Adapter 与重复失败观察可用；离线演进算法仍待历史/验证证据后实现。
+    已支持固定 v0、可选 Verifier DAG/返工、SQLite 封存与多候选离线演进。
+    Tool Policy、更通用结构 Mutation 和其他监控信号仍未开放。
     """
     # 在线执行：一次 Task 的业务产物；Agent 调度只由这个 Orchestrator 管理。
     events = StoreEventSink(storage.runs)
@@ -52,13 +53,21 @@ def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTea
     tasks = TaskService(analyzer, orchestrator, evaluator, storage.runs, storage.strategies)
 
     # 验证复用同一执行器和评价器；不能另建一套更宽松的 Candidate 评分流程。
-    validator = Validator(orchestrator, evaluator)
+    validator = Validator(
+        orchestrator,
+        evaluator,
+        analyzer,
+        storage.runs,
+        PackagedValidationDatasets(),
+    )
     manager = EvolutionManager(
-        attributor=OutcomeAttributor(),
+        attributor=OutcomeAttributor(storage.runs),
         generator=CandidateGenerator(),
         validator=validator,
         gate=ValidationGate(),
         lifecycle=StrategyLifecycle(storage.strategies),
+        strategies=storage.strategies,
+        records=storage.evolutions,
     )
     # Store 只存数据、Aggregator 提炼经验、Monitor 看趋势、Manager 管离线流程。
     evolution = EvolutionService(
@@ -70,5 +79,4 @@ def build_application(*, runtime: AgentRuntime, storage: StoragePorts) -> EvoTea
         manager,
         monitor_store=storage.monitoring,
     )
-    # storage.evolutions 预留给后续 Manager 审计实现；当前不能声称演进已可落盘。
     return EvoTeamApplication(tasks=tasks, evolution=evolution)

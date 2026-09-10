@@ -21,8 +21,9 @@ class ProjectPlanningEvaluator:
         if run.task_id != task.task_id:
             raise ValueError("评价任务与 Run 不匹配")
         plans = [r for r in run.results if r.output_schema == PLAN_SCHEMA]
-        if len(plans) == 1:
-            issues = ConstraintChecker().check(task, plans[0].output)
+        if plans:
+            # 有界返工会保留旧产物作为证据；最终一次 Executor 产物才是交付结果。
+            issues = ConstraintChecker().check(task, plans[-1].output)
         else:
             issues = (
                 EvaluationIssue(

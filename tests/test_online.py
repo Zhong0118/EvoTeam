@@ -281,6 +281,71 @@ async def test_exact_token_exhaustion_does_not_blame_completed_agent(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_critic_can_trigger_exactly_one_bounded_executor_retry(tmp_path):
+    class RetryRuntime(ScriptedRuntime):
+        def __init__(self):
+            super().__init__()
+            self.counts = {"executor": 0, "critic": 0}
+
+        async def invoke(self, agent, message, context):
+            if agent.node_id not in self.counts:
+                return await super().invoke(agent, message, context)
+            self.messages.append(message)
+            self.counts[agent.node_id] += 1
+            if agent.node_id == "executor":
+                output = json.loads((EXAMPLE / "plan.json").read_text())
+                if self.counts[agent.node_id] == 1:
+                    output["schedule"][0]["end_hour"] = 1
+                schema = AssetRef(id="project-plan", version="1")
+            else:
+                passed = self.counts[agent.node_id] == 2
+                output = {"passed": passed, "issues": [] if passed else ["duration_mismatch"]}
+                schema = AssetRef(id="planning-review", version="1")
+            return AgentResult(
+                instance_id=agent.handle_id,
+                output_schema=schema,
+                output=output,
+                input_tokens=1,
+                output_tokens=1,
+            )
+
+    storage = SQLiteStorage(f"sqlite:///{tmp_path / 'retry.db'}")
+    await storage.initialize()
+    ports = await storage.open()
+    data = configured_strategy().model_dump()
+    data["definition"]["orchestration"]["retry_limit"] = 1
+    strategy = Strategy.model_validate(data)
+    await ports.strategies.save(strategy)
+    runtime = RetryRuntime()
+    sealed = await build_application(runtime=runtime, storage=ports).tasks.execute(
+        Task.model_validate_json((EXAMPLE / "task.json").read_text()),
+        strategy_id="project-planning",
+    )
+    assert sealed.evaluation.metrics.success is True
+    snapshot = await ports.runs.read_snapshot(sealed.run_id)
+    assert snapshot.run.retry_count == 1
+    assert snapshot.run.team is not None
+    assert [item.config.node_id for item in snapshot.run.team.instances] == [
+        "planner",
+        "executor",
+        "critic",
+        "executor",
+        "critic",
+    ]
+    retry_message = runtime.messages[3]
+    assert retry_message.recipient_node_id == "executor"
+    assert retry_message.sender_node_id is None
+    assert retry_message.payload["upstream"]["critic_feedback"]["passed"] is False
+    assert (
+        len(
+            [result for result in snapshot.run.results if result.output_schema.id == "project-plan"]
+        )
+        == 2
+    )
+    await storage.close()
+
+
+@pytest.mark.asyncio
 async def test_external_cancel_during_cleanup_finishes_cleanup_and_archives_cancellation(tmp_path):
     cleanup_started = asyncio.Event()
     allow_cleanup = asyncio.Event()

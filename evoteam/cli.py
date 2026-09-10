@@ -10,10 +10,12 @@ from pathlib import Path
 from evoteam.bootstrap import build_v0_strategy
 from evoteam.demo import run_demo
 from evoteam.domain.common import AssetRef
+from evoteam.domain.evolution import ValidationPlan
 from evoteam.domain.role import ROLE_POOL
 from evoteam.domain.strategy import Strategy
 from evoteam.domain.task import Task
-from evoteam.entrypoints import initialize_database, observe_history, run_task
+from evoteam.entrypoints import evolve_history, initialize_database, observe_history, run_task
+from evoteam.evolution.gate import GatePolicy
 from evoteam.monitoring.policy import EvolutionPolicy
 from evoteam.settings import Settings
 
@@ -39,6 +41,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     observe.add_argument("--strategy-id", required=True)
     observe.add_argument("--task-scope", required=True)
     observe.add_argument("--policy", type=Path, required=True)
+    evolve = commands.add_parser("evolve", help="显式运行一次 Prompt 候选演进与配对验证")
+    evolve.add_argument("--database", type=Path, required=True)
+    evolve.add_argument("--strategy-id", required=True)
+    evolve.add_argument("--task-scope", required=True)
+    evolve.add_argument("--policy", type=Path, required=True)
+    evolve.add_argument("--validation-plan", type=Path, required=True)
+    evolve.add_argument("--gate-policy", type=Path, required=True)
+    serve = commands.add_parser("serve", help="启动本地 FastAPI 服务")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
     args = parser.parse_args(argv)
     if args.command == "roles":
         for role in ROLE_POOL.values():
@@ -49,7 +61,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         except OSError as exc:
             parser.error(str(exc))
         print(sealed.model_dump_json(indent=2))
-    elif args.command in {"init", "run", "observe"}:
+    elif args.command == "serve":
+        import uvicorn
+
+        uvicorn.run("evoteam.api:create_app", factory=True, host=args.host, port=args.port)
+    elif args.command in {"init", "run", "observe", "evolve"}:
         try:
             if args.command == "init":
                 strategy = Strategy.model_validate_json(args.strategy.read_text())
@@ -66,7 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                 print(sealed.model_dump_json(indent=2))
                 return 0 if sealed.evaluation.metrics.success else 1
-            else:
+            elif args.command == "observe":
                 policy = EvolutionPolicy.model_validate_json(args.policy.read_text())
                 result = asyncio.run(
                     observe_history(
@@ -77,6 +93,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                 )
                 print(result.model_dump_json(indent=2))
+            else:
+                policy = EvolutionPolicy.model_validate_json(args.policy.read_text())
+                validation_plan = ValidationPlan.model_validate_json(
+                    args.validation_plan.read_text()
+                )
+                gate_policy = GatePolicy.model_validate_json(args.gate_policy.read_text())
+                with redirect_stdout(sys.stderr):
+                    record = asyncio.run(
+                        evolve_history(
+                            args.database,
+                            strategy_id=args.strategy_id,
+                            task_scope=args.task_scope,
+                            policy=policy,
+                            validation_plan=validation_plan,
+                            gate_policy=gate_policy,
+                            settings=Settings(),
+                        )
+                    )
+                print("null" if record is None else record.model_dump_json(indent=2))
         except (OSError, ValueError) as exc:
             # 配置验证错误可能携带原始输入；只报告类型，不打印凭据或文件内容。
             parser.error(f"输入或配置不合法（{type(exc).__name__}），请检查文件和 .env")

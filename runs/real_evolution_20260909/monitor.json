@@ -1,0 +1,27 @@
+{
+  "strategy": {
+    "strategy_id": "project-planning",
+    "version": 0
+  },
+  "sample_count": 4,
+  "reason": "duration_mismatch 在 3 个 Run 中重复出现",
+  "trigger": {
+    "trigger_id": "trigger-5735808a9ff75cb57335984a16d161fc4e867df8babaae97c4ad0ff5d3aef18e",
+    "strategy": {
+      "strategy_id": "project-planning",
+      "version": 0
+    },
+    "policy_ref": {
+      "id": "illustrative-only",
+      "version": "1"
+    },
+    "trigger_type": "repeated_failure",
+    "task_scope": "project_planning",
+    "evidence_run_ids": [
+      "e08ac62e-a333-428d-937b-90f683e8e6fe",
+      "fc1be45c-59c3-487b-8f56-b0fb4b77e6b7",
+      "b394c02f-6523-465f-9409-d9cc3e755196"
+    ],
+    "reason": "duration_mismatch 在 3 个 Run 中重复出现"
+  }
+}

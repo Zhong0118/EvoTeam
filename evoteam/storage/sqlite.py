@@ -22,8 +22,13 @@ from sqlalchemy.engine import Engine
 from evoteam.domain.common import StrategyRef
 from evoteam.domain.evaluation import EvaluationResult
 from evoteam.domain.events import EventType, TraceEvent
-from evoteam.domain.evolution import EvolutionRecord
-from evoteam.domain.experience import FailureExperience, ImprovementExperience, OutcomePattern
+from evoteam.domain.evolution import EvolutionRecord, MutationProposal, ValidationResult
+from evoteam.domain.experience import (
+    AttributionReport,
+    FailureExperience,
+    ImprovementExperience,
+    OutcomePattern,
+)
 from evoteam.domain.run import RunPurpose, RunResult, RunSnapshot, RunStatus, SealedRun
 from evoteam.domain.strategy import Strategy, StrategyStatus
 from evoteam.domain.task import Task
@@ -63,6 +68,44 @@ strategies = Table(
     Column("strategy_id", String, primary_key=True),
     Column("version", Integer, primary_key=True),
     Column("serving_id", String, unique=True),
+    Column("data", Text, nullable=False),
+)
+strategy_counters = Table(
+    "strategy_counters",
+    metadata,
+    Column("strategy_id", String, primary_key=True),
+    Column("last_version", Integer, nullable=False),
+)
+evolutions = Table(
+    "evolutions",
+    metadata,
+    Column("evolution_id", String, primary_key=True),
+    Column("strategy_id", String, nullable=False),
+    Column("data", Text, nullable=False),
+)
+evolution_claims = Table(
+    "evolution_claims",
+    metadata,
+    Column("evolution_id", String, primary_key=True),
+    Column("request_fingerprint", String, nullable=False),
+    Column("active_strategy_id", String, unique=True),
+)
+attributions = Table(
+    "attributions",
+    metadata,
+    Column("report_id", String, primary_key=True),
+    Column("data", Text, nullable=False),
+)
+mutation_proposals = Table(
+    "mutation_proposals",
+    metadata,
+    Column("proposal_id", String, primary_key=True),
+    Column("data", Text, nullable=False),
+)
+validations = Table(
+    "validations",
+    metadata,
+    Column("validation_id", String, primary_key=True),
     Column("data", Text, nullable=False),
 )
 runs = Table(
@@ -286,6 +329,53 @@ class SQLiteStrategyStore:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
+    async def abort_candidates(self, record: EvolutionRecord) -> None:
+        if record.promoted is not None or record.termination_reason is None:
+            raise ValueError("只能终止未晋级的演进")
+        with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+            for ref in record.candidates:
+                if ref.strategy_id != record.trigger.strategy.strategy_id:
+                    raise ValueError("终止候选不能跨 Strategy")
+                row = conn.execute(
+                    select(strategies.c.data, strategies.c.serving_id).where(
+                        strategies.c.strategy_id == ref.strategy_id,
+                        strategies.c.version == ref.version,
+                    )
+                ).one()
+                candidate = Strategy.model_validate_json(row.data)
+                if row.serving_id is None and candidate.metadata.status in {
+                    StrategyStatus.CANDIDATE,
+                    StrategyStatus.VALIDATING,
+                }:
+                    rejected = candidate.model_copy(
+                        update={
+                            "metadata": candidate.metadata.model_copy(
+                                update={"status": StrategyStatus.REJECTED}
+                            )
+                        }
+                    )
+                    conn.execute(
+                        strategies.update()
+                        .where(
+                            strategies.c.strategy_id == ref.strategy_id,
+                            strategies.c.version == ref.version,
+                        )
+                        .values(data=rejected.model_dump_json())
+                    )
+            conn.execute(
+                evolutions.insert().values(
+                    evolution_id=record.evolution_id,
+                    strategy_id=record.trigger.strategy.strategy_id,
+                    data=record.model_dump_json(),
+                )
+            )
+            conn.execute(
+                evolution_claims.update()
+                .where(evolution_claims.c.evolution_id == record.evolution_id)
+                .values(active_strategy_id=None)
+            )
+
     async def save(self, strategy: Strategy) -> None:
         """仅首次登记；唯一约束禁止覆盖旧版本或创建第二个 Current。"""
         ref = strategy.metadata.ref
@@ -295,6 +385,7 @@ class SQLiteStrategyStore:
             else None
         )
         with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
             conn.execute(
                 strategies.insert().values(
                     strategy_id=ref.strategy_id,
@@ -303,6 +394,23 @@ class SQLiteStrategyStore:
                     data=strategy.model_dump_json(),
                 )
             )
+            previous = conn.execute(
+                select(strategy_counters.c.last_version).where(
+                    strategy_counters.c.strategy_id == ref.strategy_id
+                )
+            ).scalar()
+            if previous is None:
+                conn.execute(
+                    strategy_counters.insert().values(
+                        strategy_id=ref.strategy_id, last_version=ref.version
+                    )
+                )
+            elif previous < ref.version:
+                conn.execute(
+                    strategy_counters.update()
+                    .where(strategy_counters.c.strategy_id == ref.strategy_id)
+                    .values(last_version=ref.version)
+                )
 
     async def get(self, ref: StrategyRef) -> Strategy:
         with self.engine.connect() as conn:
@@ -310,18 +418,37 @@ class SQLiteStrategyStore:
                 select(strategies.c.data).where(
                     strategies.c.strategy_id == ref.strategy_id, strategies.c.version == ref.version
                 )
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if value is None:
+            raise KeyError(ref)
         return Strategy.model_validate_json(value)
 
     async def current(self, strategy_id: str) -> Strategy:
         with self.engine.connect() as conn:
             value = conn.execute(
                 select(strategies.c.data).where(strategies.c.serving_id == strategy_id)
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if value is None:
+            raise KeyError(strategy_id)
         return Strategy.model_validate_json(value)
 
     async def allocate_version(self, strategy_id: str) -> StrategyRef:
-        raise NotImplementedError("P3: 候选版本分配尚未实现")
+        with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+            last = conn.execute(
+                select(strategy_counters.c.last_version).where(
+                    strategy_counters.c.strategy_id == strategy_id
+                )
+            ).scalar()
+            if last is None:
+                raise ValueError("不能为未登记的 Strategy 分配版本")
+            next_version = last + 1
+            conn.execute(
+                strategy_counters.update()
+                .where(strategy_counters.c.strategy_id == strategy_id)
+                .values(last_version=next_version)
+            )
+        return StrategyRef(strategy_id=strategy_id, version=next_version)
 
     async def apply_lifecycle(
         self,
@@ -331,7 +458,97 @@ class SQLiteStrategyStore:
         serving: StrategyRef,
         record: EvolutionRecord,
     ) -> None:
-        raise NotImplementedError("P4: 生命周期事务尚未实现")
+        if not updated_versions:
+            raise ValueError("生命周期事务至少更新一个版本")
+        refs = tuple(item.metadata.ref for item in updated_versions)
+        if len(set(refs)) != len(refs):
+            raise ValueError("生命周期事务包含重复版本")
+        if any(ref.strategy_id != expected_current.strategy_id for ref in refs):
+            raise ValueError("生命周期事务不能跨 Strategy")
+        if serving.strategy_id != expected_current.strategy_id:
+            raise ValueError("服务指针不能跨 Strategy")
+        if record.trigger.strategy != expected_current:
+            raise ValueError("治理记录 Trigger 与预期 Current 不匹配")
+        with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+            serving_row = conn.execute(
+                select(strategies.c.version, strategies.c.data).where(
+                    strategies.c.serving_id == expected_current.strategy_id
+                )
+            ).one_or_none()
+            if serving_row is None or serving_row.version != expected_current.version:
+                raise ValueError("Current 已变化，拒绝陈旧生命周期操作")
+            for updated in updated_versions:
+                stored_json = conn.execute(
+                    select(strategies.c.data).where(
+                        strategies.c.strategy_id == updated.metadata.ref.strategy_id,
+                        strategies.c.version == updated.metadata.ref.version,
+                    )
+                ).scalar()
+                if stored_json is None:
+                    raise ValueError("生命周期目标版本尚未保存")
+                stored = Strategy.model_validate_json(stored_json)
+                if (
+                    stored.definition != updated.definition
+                    or stored.metadata.ref != updated.metadata.ref
+                    or stored.metadata.parent != updated.metadata.parent
+                    or stored.metadata.generation != updated.metadata.generation
+                ):
+                    raise ValueError("生命周期操作不能改写策略定义或版本谱系")
+            if (
+                conn.execute(
+                    select(strategies.c.version).where(
+                        strategies.c.strategy_id == serving.strategy_id,
+                        strategies.c.version == serving.version,
+                    )
+                ).scalar()
+                is None
+            ):
+                raise ValueError("服务目标版本不存在")
+            if (
+                conn.execute(
+                    select(evolutions.c.evolution_id).where(
+                        evolutions.c.evolution_id == record.evolution_id
+                    )
+                ).scalar()
+                is not None
+            ):
+                raise ValueError("EvolutionRecord 已存在，禁止重复应用")
+            conn.execute(
+                strategies.update()
+                .where(strategies.c.strategy_id == expected_current.strategy_id)
+                .values(serving_id=None)
+            )
+            for updated in updated_versions:
+                ref = updated.metadata.ref
+                conn.execute(
+                    strategies.update()
+                    .where(
+                        strategies.c.strategy_id == ref.strategy_id,
+                        strategies.c.version == ref.version,
+                    )
+                    .values(data=updated.model_dump_json())
+                )
+            conn.execute(
+                strategies.update()
+                .where(
+                    strategies.c.strategy_id == serving.strategy_id,
+                    strategies.c.version == serving.version,
+                )
+                .values(serving_id=serving.strategy_id)
+            )
+            conn.execute(
+                evolutions.insert().values(
+                    evolution_id=record.evolution_id,
+                    strategy_id=expected_current.strategy_id,
+                    data=record.model_dump_json(),
+                )
+            )
+            conn.execute(
+                evolution_claims.update()
+                .where(evolution_claims.c.evolution_id == record.evolution_id)
+                .values(active_strategy_id=None)
+            )
 
 
 class SQLiteExperienceStore:
@@ -442,12 +659,133 @@ class SQLiteMonitorStore:
                 )
 
 
-class PendingEvolutionStore:
+class SQLiteEvolutionStore:
+    def __init__(self, engine: Engine) -> None:
+        self.engine = engine
+
+    async def claim(
+        self, evolution_id: str, strategy: StrategyRef, request_fingerprint: str
+    ) -> EvolutionRecord | None:
+        with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+            claimed = conn.execute(
+                select(evolution_claims).where(evolution_claims.c.evolution_id == evolution_id)
+            ).one_or_none()
+            if claimed is not None and claimed.request_fingerprint != request_fingerprint:
+                raise ValueError("已消费 Trigger 的演进配置不能更改")
+            completed = conn.execute(
+                select(evolutions.c.data).where(evolutions.c.evolution_id == evolution_id)
+            ).scalar()
+            if completed is not None:
+                return EvolutionRecord.model_validate_json(completed)
+            active = conn.execute(
+                select(evolution_claims.c.evolution_id).where(
+                    evolution_claims.c.active_strategy_id == strategy.strategy_id
+                )
+            ).scalar()
+            if claimed is not None or active is not None:
+                raise ValueError("该 Strategy 的演进正在进行中，禁止重复启动")
+            current_version = conn.execute(
+                select(strategies.c.version).where(strategies.c.serving_id == strategy.strategy_id)
+            ).scalar()
+            if current_version != strategy.version:
+                raise ValueError("Current 已变化，拒绝陈旧演进")
+            conn.execute(
+                evolution_claims.insert().values(
+                    evolution_id=evolution_id,
+                    request_fingerprint=request_fingerprint,
+                    active_strategy_id=strategy.strategy_id,
+                )
+            )
+        return None
+
+    def _save_artifact(self, table: Table, key_column: Column, key: str, data: str) -> None:
+        with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+            previous = conn.execute(select(table.c.data).where(key_column == key)).scalar()
+            if previous is not None:
+                if previous != data:
+                    raise ValueError("演进产物 ID 已有不同内容，禁止覆盖")
+                return
+            conn.execute(table.insert().values({key_column.name: key, "data": data}))
+
+    async def save_attribution(self, report: AttributionReport) -> None:
+        self._save_artifact(
+            attributions,
+            attributions.c.report_id,
+            report.report_id,
+            report.model_dump_json(),
+        )
+
+    async def get_attribution(self, report_id: str) -> AttributionReport:
+        with self.engine.connect() as conn:
+            data = conn.execute(
+                select(attributions.c.data).where(attributions.c.report_id == report_id)
+            ).scalar_one()
+        return AttributionReport.model_validate_json(data)
+
+    async def save_proposal(self, proposal: MutationProposal) -> None:
+        self._save_artifact(
+            mutation_proposals,
+            mutation_proposals.c.proposal_id,
+            proposal.proposal_id,
+            proposal.model_dump_json(),
+        )
+
+    async def get_proposal(self, proposal_id: str) -> MutationProposal:
+        with self.engine.connect() as conn:
+            data = conn.execute(
+                select(mutation_proposals.c.data).where(
+                    mutation_proposals.c.proposal_id == proposal_id
+                )
+            ).scalar_one()
+        return MutationProposal.model_validate_json(data)
+
+    async def save_validation(self, result: ValidationResult) -> None:
+        self._save_artifact(
+            validations,
+            validations.c.validation_id,
+            result.validation_id,
+            result.model_dump_json(),
+        )
+
+    async def get_validation(self, validation_id: str) -> ValidationResult:
+        with self.engine.connect() as conn:
+            data = conn.execute(
+                select(validations.c.data).where(validations.c.validation_id == validation_id)
+            ).scalar_one()
+        return ValidationResult.model_validate_json(data)
+
     async def save_record(self, record: EvolutionRecord) -> None:
-        raise NotImplementedError("P3/P4: 演进治理记录尚未实现")
+        data = record.model_dump_json()
+        with self.engine.begin() as conn:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+            previous = conn.execute(
+                select(evolutions.c.data).where(evolutions.c.evolution_id == record.evolution_id)
+            ).scalar()
+            if previous is not None:
+                if previous != data:
+                    raise ValueError("EvolutionRecord ID 已有不同内容，禁止覆盖")
+                return
+            conn.execute(
+                evolutions.insert().values(
+                    evolution_id=record.evolution_id,
+                    strategy_id=record.trigger.strategy.strategy_id,
+                    data=data,
+                )
+            )
+            conn.execute(
+                evolution_claims.update()
+                .where(evolution_claims.c.evolution_id == record.evolution_id)
+                .values(active_strategy_id=None)
+            )
 
     async def get_record(self, evolution_id: str) -> EvolutionRecord:
-        raise NotImplementedError("P3/P4: 演进治理查询尚未实现")
+        with self.engine.connect() as conn:
+            data = conn.execute(
+                select(evolutions.c.data).where(evolutions.c.evolution_id == evolution_id)
+            ).scalar_one()
+        return EvolutionRecord.model_validate_json(data)
 
 
 class SQLiteStorage:
@@ -496,7 +834,7 @@ class SQLiteStorage:
             SQLiteRunStore(engine),
             SQLiteStrategyStore(engine),
             SQLiteExperienceStore(engine),
-            PendingEvolutionStore(),
+            SQLiteEvolutionStore(engine),
             SQLiteMonitorStore(engine),
         )
 

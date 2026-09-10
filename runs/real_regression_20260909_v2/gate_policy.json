@@ -1,0 +1,7 @@
+{
+  "ref": {"id": "project-planning-gate", "version": "demo-1"},
+  "minimum_quality_gain": 0,
+  "maximum_quality_regression": 0,
+  "maximum_token_increase": 0.1,
+  "maximum_latency_increase": 0.25
+}

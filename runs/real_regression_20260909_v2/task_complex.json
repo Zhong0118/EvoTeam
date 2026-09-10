@@ -1,0 +1,108 @@
+{
+  "task_id": "complex-release-demo",
+  "task_type": "project_planning",
+  "instruction": "为一个包含设计、并行开发、集成、测试、文档和发布的小型交付项目制定满足依赖、人员技能、可用时间、里程碑和预算的计划。",
+  "input_schema": {
+    "id": "project-planning-input",
+    "version": "1"
+  },
+  "inputs": {
+    "goal": "在 12 小时内完成一个可发布的小型应用",
+    "deadline_hour": 12,
+    "budget_minor": 2500,
+    "currency": "CNY",
+    "people": [
+      {
+        "person_id": "alice",
+        "skills": ["requirements", "design", "docs"],
+        "hourly_cost_minor": 120,
+        "available_from_hour": 0,
+        "available_until_hour": 10
+      },
+      {
+        "person_id": "bob",
+        "skills": ["python", "integration"],
+        "hourly_cost_minor": 150,
+        "available_from_hour": 0,
+        "available_until_hour": 10
+      },
+      {
+        "person_id": "carol",
+        "skills": ["python", "qa", "deploy"],
+        "hourly_cost_minor": 130,
+        "available_from_hour": 2,
+        "available_until_hour": 12
+      }
+    ],
+    "work_items": [
+      {
+        "work_id": "requirements",
+        "description": "确认需求和验收范围",
+        "duration_hours": 1,
+        "required_skills": ["requirements"],
+        "dependencies": []
+      },
+      {
+        "work_id": "architecture",
+        "description": "完成技术设计",
+        "duration_hours": 2,
+        "required_skills": ["design"],
+        "dependencies": ["requirements"]
+      },
+      {
+        "work_id": "backend",
+        "description": "实现后端功能",
+        "duration_hours": 4,
+        "required_skills": ["python"],
+        "dependencies": ["architecture"]
+      },
+      {
+        "work_id": "frontend",
+        "description": "实现前端演示逻辑",
+        "duration_hours": 3,
+        "required_skills": ["python"],
+        "dependencies": ["architecture"]
+      },
+      {
+        "work_id": "docs",
+        "description": "编写交付文档",
+        "duration_hours": 2,
+        "required_skills": ["docs"],
+        "dependencies": ["architecture"]
+      },
+      {
+        "work_id": "integration",
+        "description": "集成前后端",
+        "duration_hours": 2,
+        "required_skills": ["integration"],
+        "dependencies": ["backend", "frontend"]
+      },
+      {
+        "work_id": "qa",
+        "description": "执行验收测试",
+        "duration_hours": 2,
+        "required_skills": ["qa"],
+        "dependencies": ["integration"]
+      },
+      {
+        "work_id": "release",
+        "description": "发布并完成交付",
+        "duration_hours": 1,
+        "required_skills": ["deploy"],
+        "dependencies": ["qa", "docs"]
+      }
+    ],
+    "milestones": [
+      {
+        "milestone_id": "development-complete",
+        "work_ids": ["backend", "frontend"],
+        "deadline_hour": 7
+      },
+      {
+        "milestone_id": "release-complete",
+        "work_ids": ["requirements", "architecture", "backend", "frontend", "docs", "integration", "qa", "release"],
+        "deadline_hour": 12
+      }
+    ]
+  }
+}

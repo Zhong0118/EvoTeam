@@ -1,6 +1,6 @@
 # EvoTeam 实施路线图
 
-产品和架构按最终讨论冻结。已实现基础领域契约、项目规划 v1 Schema 与约束正反例、独立规则评价、固定三角色调度、SQLite 在线证据封存和无模型 demo；应用级历史观察/离线派发已有接线。真实 SDK 已接入并经本地 HTTP 联调，基础用量/耗时、重复错误聚合和有状态重复失败监控已实现；外部模型实测、通用能力注册、其他监控信号与演进治理仍待完成，P0/P1 尚未全部验收。实际运行入口见 [系统运行指南](SYSTEM_WALKTHROUGH.md)。
+产品和架构按最终讨论冻结。已实现项目规划 v1、规则评价、v0 三角色调度、可选 Verifier 受限 DAG、一次有界返工、SQLite 证据封存和真实 SDK。重复失败监控、Prompt/新增 Verifier 多候选、完整中间产物落库、配对验证、选择、Gate 与生命周期已实现，并完成一次 DeepSeek Gate Reject 实验；通用能力注册、其他监控信号、Tool/Skill Policy 与更通用结构 Mutation 仍待完成。实际运行入口见 [系统运行指南](SYSTEM_WALKTHROUGH.md)。
 
 ## P0 领域契约与可评价任务
 
@@ -71,4 +71,6 @@
 
 结构 Mutation 属于核心闭环验收，不再沿用“先做完整 Prompt 产品，之后才考虑 Team Evolution”的路线。UI 随已有证据逐步实现，不能用静态展示替代尚未运行的治理机制。
 
-下一项配置实际模型服务，使用固定数据集跑真实基线，核验供应商输出、Token 与失败分布并校准 Policy。随后扩展带基线的监控、受控 Tool、归因与候选验证。初始化、运行与观察命令见 [SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)。P0/P1/P2 均不能因本地协议测试通过就整体标记验收完成。
+下一步固定已接入模型的配置与独立任务分区，扩充 History / Validation / Final Test 数据，统计基线后预注册 Monitor 与 Gate。随后补逐任务配对指标、负迁移检查和真实晋级后的未来任务验证，再开展 Tool Policy、贡献消融及自动生命周期实验。运行命令见 [SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)，本次审查与分工建议见 [VERSION_COMPARISON.md](VERSION_COMPARISON.md)。P2–P4 不因少量模型调用或可控 Fake Runtime 晋级测试通过就整体验收。
+
+近期执行任务与验收条件见 [下一轮实施计划](NEXT_STEPS.md)：N1 数据库升级、N2 数据隔离、N3 逐任务证据、N4 真实基线和受控比较。该计划细化本路线图，不改变冻结架构或阶段验收要求。
