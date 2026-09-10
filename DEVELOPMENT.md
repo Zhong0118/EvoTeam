@@ -2,7 +2,7 @@
 
 ## 当前仓库状态
 
-已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已落库；审查补齐了 Trigger 原子消费、取消终止、公平比较与 Gate 缺失证据阻断。SQLite 已提供显式备份迁移入口；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 和前端仍待完成。
+已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已落库；审查补齐了 Trigger 原子消费、取消终止、公平比较与 Gate 缺失证据阻断。SQLite 已提供显式备份迁移入口；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 仍待完成；前端首版四类证据页面和只读查询已实现。
 
 开发前阅读 README、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；演进和评价工作同时阅读 EXPERIMENTS、DECISIONS。产品与架构按最终讨论冻结，现有骨架按 P0–P5 逐步填充逻辑。
 
@@ -31,9 +31,9 @@ uv sync
 | Python | .python-version 指向 3.12；pyproject 当前要求 >=3.12，项目验证以 3.12 为准 |
 | Agent Runtime | openJiuwen Core，只有 runtime/openjiuwen Adapter 直接使用 SDK |
 | 数据契约 | Pydantic；Domain、Strategy 和证据对象由 EvoTeam 自己维护 |
-| 后端相关依赖 | 已实现最小 FastAPI health/init/run/observe/evolve 接口；暂无鉴权与前端 |
+| 后端相关依赖 | 已实现最小 FastAPI health/init/run/observe/evolve 接口；已增加只读展示接口，暂无鉴权 |
 | 持久化相关依赖 | 已声明 SQLAlchemy、Alembic；首轮按单机 SQLite 路径实现 |
-| 前端 | 已确定 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix）；React Flow / Recharts 用于图形，npm 管理依赖。仓库尚无前端工程；设计与验收见 [FRONTEND_SPEC](docs/FRONTEND_SPEC.md) |
+| 前端 | 已确定 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix）；React Flow / Recharts 用于图形，npm 管理依赖。`frontend/` 已实现四类页面、Zod DTO、显式样例和只读 API 联调；启动与验证见 `frontend/README.md`，设计与验收见 [FRONTEND_SPEC](docs/FRONTEND_SPEC.md) |
 | 检查工具 | pytest、pytest-asyncio、Ruff、Pyright 已配置，基础契约与边界测试位于 tests/ |
 
 具体包版本以锁文件为准。接入前验证锁定版本的 SDK API、异步行为、结构化输出、Tool 与事件回调，不能把飞书示意代码中的类名当作真实 SDK 接口。

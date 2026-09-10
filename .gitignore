@@ -21,3 +21,9 @@ build/
 # openJiuwen runtime logs can include task content
 logs/
 runs/**/*.log
+
+# Frontend local dependencies and test artifacts
+node_modules/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo

@@ -4,13 +4,19 @@
 
 **被指派阅读并执行本文件，即承担“执行者 B：展示开发”的职责。** B是固定任务代号，不是姓名。不得因为当前聊天用户给出了任务，就将其认定为项目总负责人。
 
-“项目负责人”指分配任务并验收最终成果的人，只审核，不承担本任务的前端、接口拼装、截图、讲稿初稿或排版。B及其Codex必须完成可交付结果，不能要求负责人补代码或拼PPT。
+当前前端由项目负责人及其 Codex 接手，B 继续表示展示任务范围，不再表示原组员身份。前端和只读查询由当前开发任务完成；PPT 制作仍按原计划单独执行。
 
 本轮范围：**B0–B4**。核心A0、N1–N4属于执行者A，缺少核心依赖不代表B获得修改核心模块的授权。本文件、FRONTEND_SPEC与PRESENTATION_PLAN共同确定B的工作，不必从总计划猜测职责。
 
+### 当前交付状态
+
+B0/B1 首版四类页面、六类只读查询、Run 脱敏导出、配置差异、Trace 回放已实现，启动见 [frontend/README](../frontend/README.md)。真实 SQLite/HTTP 联调使用独立无模型演示库验证；`frontend/screenshots/` 是开发样例截图，不是 N4 真实实验素材。
+
+下一步：用团队批准的完整实测数据库做 B3 素材核对，补 Evolution 引用闭包导出与历史离线包适配；B4 PPT 未在本次前端开发中制作。A 的 N4 模型实验仍按 TASK_CORE 执行。以下待办保留作为整体 B0–B4 验收清单，不代表应重建已有页面。
+
 ### 可直接交给 Codex 的开工指令
 
-> 请以“执行者 B：展示开发”的身份执行 docs/TASK_PRESENTATION.md，按 docs/FRONTEND_SPEC.md 实现前端，并按 docs/PRESENTATION_PLAN.md 制作演示。遵守AGENTS，先核对main实际状态，只开发B0–B4。负责只读展示接口、脱敏导出、前端页面、截图、PPT和讲稿初稿；项目负责人只验收。不要实现TASK_CORE.md的任务或自行改Gate、统计与数据库写操作。A0尚未交付时，先完成明确标记的fixture适配、页面和PPT骨架，列出依赖后继续本侧工作；接口合入main后再联调。所有数字可追溯，缺证据保留空位；最终交付可运行页面、可编辑PPT和测试/素材清单，由项目负责人验收后统一纳入main，不自行合并。
+> 请先阅读 frontend/README.md 和 docs/FRONTEND_SPEC.md，在已有四类页面、DTO 和只读 API 上继续开发，不重建工程。优先用获准共享的完整实测数据库完成 B3 核对，补充 Evolution 脱敏闭包导出及历史离线包。保留来源标签、未知指标和缺失证据，不触发模型或修改 Gate。PPT 仅在明确分配 B4 时按 PRESENTATION_PLAN 制作。不得接管 TASK_CORE；如需合并，先完成验证再由负责人决定。
 
 ## 1. 开工依据与文件边界
 
@@ -18,24 +24,24 @@
 
 | B可修改 | B不得接管 |
 | --- | --- |
-| 拟新增 `frontend/`、`evoteam/presentation/`、`evoteam/api_queries.py`，以及展示测试 | `domain/`、`evolution/`、`orchestration/`、`monitoring/`、`storage/` 的领域/存储实现和统计规则 |
+| `frontend/`、`evoteam/presentation/`、`evoteam/api_queries.py`，以及展示测试 | `domain/`、`evolution/`、`orchestration/`、`monitoring/`、`storage/` 的领域/存储实现和统计规则 |
 | `evoteam/api.py`中挂载只读router的最小改动，保持现有POST接口兼容 | 修改现有执行/晋级/回滚业务行为；展示侧不能直接写SQL或触发模型 |
 | PPT、截图、素材来源清单、导出说明和本任务进度 | A的实验数据制作、基线调用、Gate参数校准 |
 
-前端选型确定为 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix），图形使用 React Flow / Recharts，npm 管理锁定依赖；完整工程、样式、操作及动画约定见 [FRONTEND_SPEC](FRONTEND_SPEC.md)。这些是待实施的选型，不代表已安装。B负责自己的接口适配与router挂载，负责人不承担集成编码。
+前端选型确定为 React + TypeScript + Vite、Tailwind CSS v4、shadcn/ui（Radix），图形使用 React Flow / Recharts，npm 管理锁定依赖；完整工程、样式、操作及动画约定见 [FRONTEND_SPEC](FRONTEND_SPEC.md)。这些依赖已安装并锁定，具体版本见 frontend/package-lock.json。B负责自己的接口适配与router挂载，负责人不承担集成编码。
 
 ## 2. B0：固定展示Schema与样例，立即开始
 
-当前main已有本地POST运行/观察/演进入口，但以下GET端点仍为拟实施，不是既有能力。先定义展示Schema，再让fixture与真实API共用消费代码。
+现已实现下表六类 GET，并挂载到现有 FastAPI。展示 DTO 采用领域模型的白名单投影；前端的 fixture 与真实 API 共用 Zod 校验和页面。
 
-- [ ] 依据已有Pydantic模型起草展示DTO，放入拟新增的 `evoteam/presentation/models.py`，前端对应类型集中保存；不复制修改核心领域模型。
-- [ ] 准备成功、失败、待采样、缺证据四类fixture，覆盖null指标和重复执行实例；开发样例必须持续标记为fixture。
+- [x] 依据已有Pydantic模型起草展示DTO，放入 `evoteam/presentation/models.py`，前端对应类型集中保存；不复制修改核心领域模型。
+- [x] 准备成功、失败、待采样、缺证据四类fixture，覆盖null指标和重复执行实例；开发样例必须持续标记为fixture。
 - [ ] 把消费字段和缺失端口清单交给A，使用下表约定，不要求负责人写接口设计。
 - [ ] 从已提交历史JSON选择可展示的Run/Evolution ID，B检查可用字段，A核对来源；缺少完整快照的图留空。
 
 共用展示外层：`schema_version`、`source_kind`、`captured_at`、`code_commit`（未知为null）、`data`、`missing_refs`。来源固定为fixture / recorded_model_run / current_database；来源属于展示元数据，不回写原始SealedRun。
 
-| B负责的拟议HTTP接口 | A提供的存储能力 | B的行为要求 |
+| 已实现的展示 HTTP 接口 | A提供的存储能力 | B的行为要求 |
 | --- | --- | --- |
 | `GET /v1/runs?strategy_id=&purpose=&limit=&cursor=` | A0 list_runs | data包含items: SealedRun[]、next_cursor，明确用途/范围 |
 | `GET /v1/runs/{run_id}` | get_sealed_run + read_snapshot | 返回Task/Strategy/Run/Evaluation；无快照标缺失，不从索引造计划 |
@@ -46,12 +52,12 @@
 
 A0约定的列表返回 `(items_tuple, next_cursor)`；缺失单条记录为KeyError。B将存储返回映射为展示DTO及HTTP状态：资源根ID不存在404，非法过滤/分页参数400或框架422，已存在记录的部分证据缺失返回可读data＋missing_refs。模型版本、时间与成本缺失时显示未知。
 
-B不重新计算成功率/Gate/子类收益。当前只有聚合指标就显示聚合；N3交付逐题数据后再扩展页面。只读浏览、刷新、回放不能调用run/evolve；不做手工晋级按钮。
+B不重新计算成功率/Gate/子类收益。已支持 N3 提供的逐题配对数据；旧记录只有聚合指标时只显示聚合。只读浏览、刷新、回放不能调用run/evolve；不做手工晋级按钮。
 
 ## 3. B1–B4 执行要求
 ## B1：前端页面与交互，可从现在开始
 
-**主责：B。** 严格按 [FRONTEND_SPEC](FRONTEND_SPEC.md) 的四类页面、布局、设计变量和交互规则开发。先交付运行详情和 Trace 代表页面供设计验收，再复用组件完成其余页面；使用静态证据包启动，缺接口不阻塞页面开发。
+**首版已交付，继续维护。** 严格按 [FRONTEND_SPEC](FRONTEND_SPEC.md) 的四类页面、布局、设计变量和交互规则开发。先交付运行详情和 Trace 代表页面供设计验收，再复用组件完成其余页面；使用静态证据包启动，缺接口不阻塞页面开发。
 
 | 页面 | 画面与交互 | 依赖证据 | 验收 |
 | --- | --- | --- | --- |
@@ -69,7 +75,7 @@ B不重新计算成功率/Gate/子类收益。当前只有聚合指标就显示�
 
 ## B2：只读查询与脱敏导出
 
-**主责：B，A 提供存储端口支持。** 拟修改 `evoteam/api_queries.py`、`evoteam/presentation/`；新建 `tests/test_api_queries.py`、`tests/test_evidence_export.py`。
+**六类 GET 与 Run 导出已交付，Evolution 导出待补。** 维护 `evoteam/api_queries.py`、`evoteam/presentation/`；新建 `tests/test_api_queries.py`、`tests/test_evidence_export.py`。
 
 - [ ] 根据 B0 契约给现有 get/read 接口加查询包装；新列表查询使用分页和稳定排序，不一次加载全部历史。
 - [ ] 加入 `tests/test_api_queries.py`：404、空列表、用途隔离、分页、部分证据缺失，以及读取不写数据库的断言。

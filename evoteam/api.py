@@ -9,6 +9,7 @@ from typing import Annotated, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from evoteam.api_queries import create_query_router
 from evoteam.domain.evolution import EvolutionRecord, MonitorResult, ValidationPlan
 from evoteam.domain.run import SealedRun
 from evoteam.domain.strategy import Strategy
@@ -128,4 +129,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except (OSError, ValueError) as exc:
             raise _safe_bad_request(exc) from exc
 
+    app.include_router(create_query_router(_database_path(configured.database_url)))
     return app
