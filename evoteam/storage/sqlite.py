@@ -1,5 +1,9 @@
 """单机 SQLite 在线证据存储；显式建表，短事务同步执行，未用于高并发服务。"""
 
+import base64
+import binascii
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -13,8 +17,10 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    and_,
     create_engine,
     inspect,
+    or_,
     select,
 )
 from sqlalchemy.engine import Engine
@@ -130,6 +136,45 @@ events = Table(
     UniqueConstraint("run_id", "sequence"),
 )
 
+_MAX_PAGE_SIZE = 100
+
+
+def _validate_page_limit(limit: int) -> None:
+    if not 1 <= limit <= _MAX_PAGE_SIZE:
+        raise ValueError(f"limit 必须在 1 到 {_MAX_PAGE_SIZE} 之间")
+
+
+def _encode_cursor(kind: str, filters: Mapping[str, str | None], position: tuple[str, ...]) -> str:
+    payload = json.dumps(
+        {"v": 1, "kind": kind, "filters": dict(filters), "position": position},
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return base64.urlsafe_b64encode(payload).decode().rstrip("=")
+
+
+def _decode_cursor(
+    cursor: str, *, kind: str, filters: Mapping[str, str | None], position_size: int
+) -> tuple[str, ...]:
+    try:
+        padding = "=" * (-len(cursor) % 4)
+        raw = base64.b64decode(cursor + padding, altchars=b"-_", validate=True)
+        payload = json.loads(raw)
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("cursor 格式无效") from error
+    if (
+        not isinstance(payload, dict)
+        or payload.get("v") != 1
+        or payload.get("kind") != kind
+        or payload.get("filters") != dict(filters)
+        or not isinstance(payload.get("position"), list)
+        or len(payload["position"]) != position_size
+        or any(not isinstance(item, str) for item in payload["position"])
+    ):
+        raise ValueError("cursor 与查询类型或过滤条件不匹配")
+    return tuple(payload["position"])
+
 
 @dataclass(frozen=True)
 class StoragePorts:
@@ -143,6 +188,67 @@ class StoragePorts:
 class SQLiteRunStore:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
+
+    async def get_sealed_run(self, run_id: str) -> SealedRun:
+        with self.engine.connect() as conn:
+            value = conn.execute(
+                select(runs.c.sealed).where(runs.c.run_id == run_id)
+            ).scalar_one_or_none()
+        if value is None:
+            raise KeyError(run_id)
+        return SealedRun.model_validate_json(value)
+
+    async def list_runs(
+        self,
+        strategy_id: str,
+        *,
+        purpose: RunPurpose | None,
+        limit: int,
+        cursor: str | None,
+    ) -> tuple[tuple[SealedRun, ...], str | None]:
+        """按 sealed_at 降序、run_id 升序进行稳定的键集分页。"""
+        _validate_page_limit(limit)
+        filters = {
+            "strategy_id": strategy_id,
+            "purpose": purpose.value if purpose is not None else None,
+        }
+        position = (
+            _decode_cursor(
+                cursor,
+                kind="runs",
+                filters=filters,
+                position_size=2,
+            )
+            if cursor is not None
+            else None
+        )
+        conditions = [runs.c.strategy_id == strategy_id]
+        if purpose is not None:
+            conditions.append(runs.c.purpose == purpose.value)
+        if position is not None:
+            sealed_at, run_id = position
+            conditions.append(
+                or_(
+                    runs.c.sealed_at < sealed_at,
+                    and_(runs.c.sealed_at == sealed_at, runs.c.run_id > run_id),
+                )
+            )
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(runs.c.sealed_at, runs.c.run_id, runs.c.sealed)
+                .where(*conditions)
+                .order_by(runs.c.sealed_at.desc(), runs.c.run_id)
+                .limit(limit + 1)
+            ).all()
+        page = rows[:limit]
+        next_cursor = None
+        if len(rows) > limit:
+            last = page[-1]
+            next_cursor = _encode_cursor("runs", filters, (last.sealed_at, last.run_id))
+        return (
+            tuple(SealedRun.model_validate_json(row.sealed) for row in page),
+            next_cursor,
+        )
 
     async def append_event(self, event: TraceEvent) -> None:
         if event.run_id is None or event.task_id is None:
@@ -308,7 +414,9 @@ class SQLiteRunStore:
         with self.engine.connect() as conn:
             value = conn.execute(
                 select(runs.c.snapshot).where(runs.c.run_id == run_id)
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if value is None:
+            raise KeyError(run_id)
         return RunSnapshot.model_validate_json(value)
 
     async def events_for_run(self, run_id: str) -> tuple[TraceEvent, ...]:
@@ -422,6 +530,20 @@ class SQLiteStrategyStore:
         if value is None:
             raise KeyError(ref)
         return Strategy.model_validate_json(value)
+
+    async def list_versions(self, strategy_id: str) -> tuple[Strategy, ...]:
+        """返回一个 Strategy 的全部版本，按 version 升序排列。"""
+        with self.engine.connect() as conn:
+            values = (
+                conn.execute(
+                    select(strategies.c.data)
+                    .where(strategies.c.strategy_id == strategy_id)
+                    .order_by(strategies.c.version)
+                )
+                .scalars()
+                .all()
+            )
+        return tuple(Strategy.model_validate_json(value) for value in values)
 
     async def current(self, strategy_id: str) -> Strategy:
         with self.engine.connect() as conn:
@@ -721,7 +843,9 @@ class SQLiteEvolutionStore:
         with self.engine.connect() as conn:
             data = conn.execute(
                 select(attributions.c.data).where(attributions.c.report_id == report_id)
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if data is None:
+            raise KeyError(report_id)
         return AttributionReport.model_validate_json(data)
 
     async def save_proposal(self, proposal: MutationProposal) -> None:
@@ -738,7 +862,9 @@ class SQLiteEvolutionStore:
                 select(mutation_proposals.c.data).where(
                     mutation_proposals.c.proposal_id == proposal_id
                 )
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if data is None:
+            raise KeyError(proposal_id)
         return MutationProposal.model_validate_json(data)
 
     async def save_validation(self, result: ValidationResult) -> None:
@@ -753,7 +879,9 @@ class SQLiteEvolutionStore:
         with self.engine.connect() as conn:
             data = conn.execute(
                 select(validations.c.data).where(validations.c.validation_id == validation_id)
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if data is None:
+            raise KeyError(validation_id)
         return ValidationResult.model_validate_json(data)
 
     async def save_record(self, record: EvolutionRecord) -> None:
@@ -784,8 +912,45 @@ class SQLiteEvolutionStore:
         with self.engine.connect() as conn:
             data = conn.execute(
                 select(evolutions.c.data).where(evolutions.c.evolution_id == evolution_id)
-            ).scalar_one()
+            ).scalar_one_or_none()
+        if data is None:
+            raise KeyError(evolution_id)
         return EvolutionRecord.model_validate_json(data)
+
+    async def list_records(
+        self, strategy_id: str, *, limit: int, cursor: str | None
+    ) -> tuple[tuple[EvolutionRecord, ...], str | None]:
+        """按 evolution_id 升序分页；模型当前没有可用的演进时间字段。"""
+        _validate_page_limit(limit)
+        filters = {"strategy_id": strategy_id}
+        position = (
+            _decode_cursor(
+                cursor,
+                kind="evolutions",
+                filters=filters,
+                position_size=1,
+            )
+            if cursor is not None
+            else None
+        )
+        conditions = [evolutions.c.strategy_id == strategy_id]
+        if position is not None:
+            conditions.append(evolutions.c.evolution_id > position[0])
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(evolutions.c.evolution_id, evolutions.c.data)
+                .where(*conditions)
+                .order_by(evolutions.c.evolution_id)
+                .limit(limit + 1)
+            ).all()
+        page = rows[:limit]
+        next_cursor = None
+        if len(rows) > limit:
+            next_cursor = _encode_cursor("evolutions", filters, (page[-1].evolution_id,))
+        return (
+            tuple(EvolutionRecord.model_validate_json(row.data) for row in page),
+            next_cursor,
+        )
 
 
 class SQLiteStorage:
