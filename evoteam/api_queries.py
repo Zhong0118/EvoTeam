@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from evoteam.domain.run import RunPurpose
 from evoteam.presentation.models import EvidenceEnvelope
-from evoteam.presentation.projections import redact, run_detail, strategy_view, summary
+from evoteam.presentation.projections import event_view, redact, run_detail, strategy_view, summary
 from evoteam.storage.sqlite import SQLiteStorage, StoragePorts
 
 
@@ -59,7 +59,7 @@ def create_query_router(database: Path) -> APIRouter:
     async def event_data(ports: StoragePorts, run_id: str) -> list[dict[str, Any]]:
         await ports.runs.get_sealed_run(run_id)
         events = await ports.runs.events_for_run(run_id)
-        return [redact(e.model_dump(mode="json", exclude={"payload"})) for e in events]
+        return [event_view(e) for e in events]
 
     @router.get("/runs/{run_id}/events", response_model=EvidenceEnvelope)
     async def events(run_id: str) -> EvidenceEnvelope:

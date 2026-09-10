@@ -127,6 +127,9 @@ export const eventSchema = z.object({
   node_id: z.string().nullable(),
   instance_id: z.string().nullable(),
   caused_by: z.array(z.string()),
+  node_state: z.string().nullable().optional(),
+  output: z.unknown().nullable().optional(),
+  config: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 export const strategySchema = z.object({
   metadata: z.object({

@@ -174,7 +174,7 @@ export const runs: Run[] = titles.map((title, i) => ({
   termination_reason: i === 3 ? "timeout" : null,
 }));
 export function eventsFor(run: Run): TraceEvent[] {
-  return (run.instances ?? []).flatMap((ins, i) =>
+  const steps = (run.instances ?? []).flatMap((ins, i) =>
     ["agent_started", "agent_completed"].map((type, j) => ({
       event_id: `event-${run.run_id}-${i * 2 + j}`,
       event_type: type,
@@ -184,8 +184,35 @@ export function eventsFor(run: Run): TraceEvent[] {
       node_id: ins.node_id,
       instance_id: ins.instance_id,
       caused_by: i * 2 + j ? [`event-${run.run_id}-${i * 2 + j - 1}`] : [],
+      node_state: type === "agent_started" ? "running" : "completed",
+      output: type === "agent_completed" ? ins.output : null,
+      config: null,
     })),
   );
+  const tail = (sequence: number, type: string): TraceEvent => ({
+    event_id: `event-${run.run_id}-${sequence}`,
+    event_type: type,
+    timestamp: run.sealed_at,
+    sequence,
+    run_id: run.run_id,
+    node_id: null,
+    instance_id: null,
+    caused_by: [`event-${run.run_id}-${sequence - 1}`],
+    node_state: null,
+    output:
+      type === "evaluation_completed"
+        ? {
+            success: run.evaluation.metrics.success,
+            hard_constraint_errors: run.evaluation.metrics.hard_constraint_errors,
+          }
+        : null,
+    config: null,
+  });
+  return [
+    ...steps,
+    tail(steps.length, "evaluation_completed"),
+    tail(steps.length + 1, "run_sealed"),
+  ];
 }
 export const evolutions: Evolution[] = [
   {

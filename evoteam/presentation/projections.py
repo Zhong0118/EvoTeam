@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from evoteam.domain.agent import AgentResult
+from evoteam.domain.events import EventType, TraceEvent
 from evoteam.domain.planning import (
     ANALYSIS_SCHEMA,
     PLAN_SCHEMA,
@@ -80,6 +81,52 @@ def summary(run: SealedRun) -> dict[str, Any]:
 
 def strategy_view(strategy: Strategy) -> dict[str, Any]:
     return redact(strategy.model_dump(mode="json", include={"definition", "metadata"}))
+
+
+NODE_STATE = {
+    EventType.AGENT_STARTED: "running",
+    EventType.AGENT_COMPLETED: "completed",
+    EventType.AGENT_FAILED: "failed",
+}
+
+
+def event_view(event: TraceEvent) -> dict[str, Any]:
+    """运行轨道用的白名单事件投影；payload、原始消息与 SDK 日志不外发。"""
+    view = redact(
+        event.model_dump(
+            mode="json",
+            include={
+                "event_id",
+                "event_type",
+                "timestamp",
+                "sequence",
+                "run_id",
+                "node_id",
+                "instance_id",
+                "caused_by",
+            },
+        )
+    )
+    view["node_state"] = NODE_STATE.get(event.event_type)
+    view["output"] = None
+    view["config"] = None
+    if event.event_type is EventType.AGENT_COMPLETED:
+        result = event.payload.get("result")
+        if isinstance(result, dict):
+            try:
+                view["output"] = public_output(AgentResult.model_validate(result))
+            except ValueError:
+                pass
+    elif event.event_type is EventType.TEAM_CREATED:
+        plan = event.payload.get("plan")
+        if isinstance(plan, dict):
+            view["config"] = redact(
+                {
+                    "enabled_nodes": plan.get("enabled_node_ids"),
+                    "edges": plan.get("edges"),
+                }
+            )
+    return view
 
 
 async def run_detail(store: RunStore, run_id: str) -> tuple[dict[str, Any], list[str]]:
