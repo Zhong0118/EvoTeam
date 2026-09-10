@@ -1,0 +1,7 @@
+{
+  "strategy": {"strategy_id": "project-planning", "version": 0},
+  "policy_ref": {"id": "project-planning-monitor", "version": "n4-baseline-c1204d3"},
+  "sample_count": 6,
+  "reason": "未达到重复失败阈值",
+  "trigger": null
+}

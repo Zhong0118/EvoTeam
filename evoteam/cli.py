@@ -18,6 +18,7 @@ from evoteam.entrypoints import evolve_history, initialize_database, observe_his
 from evoteam.evolution.gate import GatePolicy
 from evoteam.monitoring.policy import EvolutionPolicy
 from evoteam.settings import Settings
+from evoteam.storage.migrations import CURRENT_SCHEMA_VERSION, upgrade_database
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -32,6 +33,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     init = commands.add_parser("init", help="显式登记初始 CURRENT 策略和模型绑定，不调用模型")
     init.add_argument("--database", type=Path, required=True)
     init.add_argument("--strategy", type=Path, required=True)
+    migrate = commands.add_parser("migrate", help="备份并显式升级已有 SQLite 数据库")
+    migrate.add_argument("--database", type=Path, required=True)
+    migrate.add_argument("--backup", type=Path, required=True, help="必须是尚不存在的新路径")
     run = commands.add_parser("run", help="通过真实 openJiuwen 执行任务并封存")
     run.add_argument("--database", type=Path, required=True)
     run.add_argument("--task", type=Path, required=True)
@@ -65,12 +69,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         import uvicorn
 
         uvicorn.run("evoteam.api:create_app", factory=True, host=args.host, port=args.port)
-    elif args.command in {"init", "run", "observe", "evolve"}:
+    elif args.command in {"init", "migrate", "run", "observe", "evolve"}:
         try:
             if args.command == "init":
                 strategy = Strategy.model_validate_json(args.strategy.read_text())
                 asyncio.run(initialize_database(args.database, strategy, Settings()))
                 print('{"initialized": true}')
+            elif args.command == "migrate":
+                upgrade_database(args.database, backup=args.backup)
+                print(f'{{"migrated": true, "schema_version": {CURRENT_SCHEMA_VERSION}}}')
             elif args.command == "run":
                 task = Task.model_validate_json(args.task.read_text())
                 # SDK 默认向 stdout 写日志；CLI 保持 stdout 只含机器可读结果。

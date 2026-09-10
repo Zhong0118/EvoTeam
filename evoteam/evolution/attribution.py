@@ -142,7 +142,10 @@ class OutcomeAttributor:
         """把配对验证的可观测差值归到当前单因素候选。"""
         current = result.current_metrics
         candidate = result.candidate_metrics
-        evidence = (f"validation:{result.validation_id}",)
+        evidence = (f"validation:{result.validation_id}",) + tuple(
+            f"task:{pair.task_id}/repeat:{pair.repeat_index}/runs:{pair.current_run_id},{pair.candidate_run_id}"
+            for pair in result.pairs
+        )
         parts: list[str] = []
         if (
             current.hard_constraint_errors is not None
@@ -155,7 +158,13 @@ class OutcomeAttributor:
             parts.append(f"质量 {current.quality:.4f} → {candidate.quality:.4f}")
         if current.success is not None and candidate.success is not None:
             parts.append(f"全部成功 {current.success} → {candidate.success}")
-        comparable = bool(parts)
+        regressions = sum(
+            pair.current_metrics.success is True and pair.candidate_metrics.success is not True
+            for pair in result.pairs
+        )
+        if result.pairs:
+            parts.append(f"逐任务成功退化 {regressions}/{len(result.pairs)}")
+        comparable = bool(parts) and bool(result.pairs)
         claim = AttributionClaim(
             kind=AttributionKind.IMPROVEMENT,
             target=f"strategy:{result.candidate.strategy_id}@{result.candidate.version}",

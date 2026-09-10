@@ -24,6 +24,60 @@
 
 数据划分与版本在实验开始前登记。验证结果可以形成治理证据，但不能把验证答案或反复试探同一集合变成新的隐性训练集。若需要新的候选生成轮次，应按预注册协议控制验证复用、轮次与独立评测。
 
+### 2.1 数据清单与内容身份
+
+项目规划清单当前为 `project-planning-manifest@2`，文件位于 `examples/datasets/project_planning_manifest.json`。N4 前将 History 扩充为两个子类各三题；Validation 和 Final Test 内容保持版本 1，不因 History 扩充而改动。三个分区分别登记为：
+
+| 分区 | AssetRef | 当前人工复核子类 |
+| --- | --- | --- |
+| History | `project-planning-history@2` | `resource_conflict`、`dependency`（各 3 题） |
+| Validation | `project-planning-validation@1` | `deadline`、`skill` |
+| Final Test | `project-planning-final-test@1` | `budget`、`valid_infeasible` |
+
+`valid_infeasible` 表示输入通过固定 Task/PlanningInput Schema，但不存在满足技能等硬约束的合法排期，不表示输入格式损坏。History 当前每个子类三题，只用于第一轮描述性 v0 基线；Validation 与 Final Test 每个子类仍只有一题，尚不足以支持稳定的逐子类收益结论。
+
+### 2.2 N4 第一阶段冻结配置
+
+第一阶段只运行 `n4-baseline-v0-history2-r1`：固定 v0、History@2 六题、一次重复、Planner/Executor/Critic 每题最多三次模型调用，总硬上限 18 次。配置位于 `examples/experiments/n4_baseline_v0.json`。候选比较和 Final Test 在本批次均关闭；不得用剩余额度顺便启动。执行入口会拒绝覆盖已有输出目录，并在调用前核对清单版本、任务数、Strategy、模型引用和请求上限。
+
+命令如下，输出数据库不进入 Git，脱敏 `baseline_report.json` 保存代码提交、三份输入摘要、模型非秘密参数、Prompt 引用、预算、运行 ID、评价与实际请求数：
+
+```bash
+uv run python -m scripts.run_n4_baseline \
+  --config examples/experiments/n4_baseline_v0.json \
+  --output runs/n4-baseline-v0-history2-r1
+```
+
+任务内容摘要固定为 SHA-256：仅对 `task_type`、`input_schema`、`inputs` 做规范 JSON 编码，使用 UTF-8、键排序和固定分隔符。`task_id` 与 `instruction` 被排除，因此只改 ID、改写指令或调整 JSON 键顺序不能把同一结构化题目放进其他分区。该摘要用于发现完全相同的结构化输入，不声称能识别语义改写、数值扰动或所有同构题目。
+
+清单加载时重新计算并核对每条摘要；未登记引用、同引用内容变化、空分区、重复 ID 和跨分区内容重复均在模型调用前拒绝。Validator 只能把 `validation` 数据集作为 `ValidationPlan.dataset_ref`，`final_test` 引用不能进入候选选择。EvolutionManager 在归因和候选生成前，通过封存 Run 的 `RunSnapshot.task` 只反查 History 登记，不加载 Validation 或 Final Test；反查结果包含 manifest、dataset、task fingerprint 与 subclass，可用于从历史 Run 追溯清单版本。CandidateGenerator 的输入仍只有 Current Strategy、Failure Attribution 和 Policy。
+
+### 2.3 执行时来源与预检快照
+
+新 Run 在执行前固定 `DatasetSource`，封存索引和快照保存 manifest_ref、dataset_ref、partition、task_id、fingerprint、subclass。历史校验核对已封存来源，清单升级不会改变旧 Run 身份。旧记录仍可读取，但缺来源时拒绝进入新演进，不用当前清单补造执行时身份。
+
+真实实验在创建 Runtime 前独占保存 `preflight.json`：代码提交、输入内容与摘要、实际模型参数、完整评价器引用、Prompt 内容摘要和预算。已跟踪代码有未提交修改时拒绝开始；`expected_model` 存在时必须逐项匹配，N4 对照要求提供此字段。报告采用预检值，不在结束后重读摘要。失败/取消保存终态与已完成记录，取消不继续下一题，输出目录禁止隐式续跑。
+
+### 2.4 N4 有限对照：已实现，真实执行待模型配置
+
+配置为 `examples/experiments/n4_comparison_v1.json`。独立数据库中的研究对照复用正式 Orchestrator、Evaluator、Validator、Improvement Attribution 和 Gate。两个研究臂预先指定为 executor@v1-resource-check、verifier@v0，不伪造 Trigger，不称为自动演进，不修改已有服务数据库。
+
+固定顺序：History 六题 v0 → Prompt Candidate 两题配对 → Verifier Candidate 两题配对 → 当前策略 Final Test 两题。每组一次重复，Validation 只用于这两种已确定候选。两组 Gate 保存后才读取 Final Test，不能据其结果再挑候选或调门槛。
+
+沿用历史基线模型参数、零 Retry，最多 **50 次模型请求**：6×3 + 2×(3+3) + 2×(3+4) + 2×3。失败请求计入上限。Monitor 沿用基线规则；研究 Gate 禁止质量/子类退化，要求至少六个独立验证任务、Token 增幅最多 25%、延迟增幅最多 50%。成本和延迟边界为开发者研究约束，并非六题基线估出的统计结论。当前 Validation 两题不能满足六题门槛，不降低门槛制造 PASS；本批不晋级，只进行有限对照与服务策略最终测试。充分样本的收益校准和自动晋级仍须补数据并走既有 Manager 流程。
+
+```bash
+# 仅预检，不创建模型 Runtime；预检目录不可用于隐式续跑。
+uv run python -m scripts.run_n4_campaign --config examples/experiments/n4_comparison_v1.json --env-file /absolute/path/to/local.env --output runs/n4-preflight-v1 --preflight-only
+
+# 真实执行使用新目录，需要可用的本地模型配置。
+uv run python -m scripts.run_n4_campaign --config examples/experiments/n4_comparison_v1.json --env-file /absolute/path/to/local.env --output runs/n4-fixed-comparison-v1
+```
+
+`campaign_report.json` 保存冻结身份、候选配置、逐题配对、改进归因、Gate、服务版本前后、Final Test ID、脱敏快照和事件。`metrics_by_purpose` 分开报告线上基线、离线验证及最终测试的成功数/总数、Token、实例数、Retry、工具数和延迟；未知值保留，另列已知小计。费用未知时不换算金额，失败/超时/取消均保留。
+
+当前端到端离线测试已覆盖这条路径、重复执行、取消和预算拒绝，尚无本批真实报告。旧 `n4-baseline-v0-history2-r1` 是历史结果，不能冒充修复后重跑。模型配置与真实结果未就绪前，N4 不标全部完成。
+
 ## 3. 对照与消融
 
 | 方案 | 设置 | 回答的问题 |
@@ -86,6 +140,12 @@ Validator 使用相同的验证任务、模型与 Tool 实现版本、随机参�
 验证 Run 显式标记用途，与线上监控样本隔离，不能递归触发新的演进。多个候选使用独立身份，所有拒绝与失败同样留档。
 
 ## 8. Validation Gate
+
+验证按 `(repeat_index, manifest task order)` 顺序封存 Current/Candidate，并写入不可变 `ValidationPair`；所有汇总均从同一 pair 序列计算。独立任务按 `task_fingerprint` 去重，失败和超时进入成功率分母，未知用量保持 `None`。旧记录缺少 `pairs` 时只能继续采样，不能授权晋级。
+
+延迟分布采用 nearest-rank（升序后索引 `ceil(p*n)-1`）并保存样本数。少于 20 个已知延迟样本的 p95 只作描述性记录，带 `latency_p95_unstable_small_sample`，不作稳定性结论。Runtime 尚未消费 seed，因此实际采样配置保存 `seed_applied=false` 与 `seed_not_applied`。
+
+Gate Policy 必须显式登记配对数、独立任务数和子类成功率退化边界。逐任务成功退化或硬约束错误增加不能被总体改善覆盖。这些字段没有正式默认阈值；示例数字仅用于测试，正式值须在 N4 基线后冻结。
 
 | 维度 | 判定原则 | 未满足时 |
 | --- | --- | --- |

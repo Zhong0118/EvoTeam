@@ -32,6 +32,11 @@ from evoteam.orchestration.task_analyzer import TaskAnalyzer
 from evoteam.storage.sqlite import SQLiteStorage
 
 
+class FixtureHistoryValidator:
+    async def validate(self, evidence):
+        return ()
+
+
 @pytest.fixture
 async def governance(tmp_path):
     storage = SQLiteStorage(f"sqlite:///{tmp_path / 'governance.db'}")
@@ -83,6 +88,7 @@ async def governance(tmp_path):
             StrategyLifecycle(ports.strategies),
             ports.strategies,
             ports.evolutions,
+            FixtureHistoryValidator(),
         )
 
     yield storage, ports, manager, (trigger, current, evidence, policy, plan, gate)

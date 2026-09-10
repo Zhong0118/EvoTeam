@@ -6,6 +6,7 @@ from evoteam.domain.common import (
     AssetRef,
     FrozenModel,
     Identifier,
+    NonNegativeFloat,
     NonNegativeInt,
     PositiveInt,
     StrategyRef,
@@ -77,6 +78,52 @@ class ValidationPlan(FrozenModel):
     # TODO(P4): 登记模型/工具/预算及子类切分的完整实验清单。
 
 
+class ValidationPair(FrozenModel):
+    """一次同任务、同重复序号的 Current/Candidate 封存对。"""
+
+    task_id: Identifier
+    task_fingerprint: str
+    subclass: Identifier
+    repeat_index: NonNegativeInt
+    current_run_id: Identifier
+    candidate_run_id: Identifier
+    current_metrics: RunMetrics
+    candidate_metrics: RunMetrics
+
+
+class LatencyDistribution(FrozenModel):
+    """nearest-rank 分位数；p95 样本少于 20 时只记录、不作稳定性结论。"""
+
+    sample_count: NonNegativeInt
+    p50_seconds: NonNegativeFloat | None = None
+    p95_seconds: NonNegativeFloat | None = None
+    algorithm: str = "nearest_rank"
+
+
+class SubclassValidationSummary(FrozenModel):
+    subclass: Identifier
+    success_count: NonNegativeInt
+    total_count: NonNegativeInt
+    unknown_success_count: NonNegativeInt
+    independent_task_count: NonNegativeInt
+    latency: LatencyDistribution
+
+
+class ValidationSummary(FrozenModel):
+    success_count: NonNegativeInt
+    total_count: NonNegativeInt
+    unknown_success_count: NonNegativeInt
+    independent_task_count: NonNegativeInt
+    subclasses: tuple[SubclassValidationSummary, ...]
+    latency: LatencyDistribution
+
+
+class ValidationSampling(FrozenModel):
+    repeats: PositiveInt
+    seeds: tuple[int, ...]
+    seed_applied: bool
+
+
 class ValidationResult(FrozenModel):
     validation_id: Identifier
     current: StrategyRef
@@ -86,8 +133,11 @@ class ValidationResult(FrozenModel):
     candidate_run_ids: tuple[str, ...]
     current_metrics: RunMetrics
     candidate_metrics: RunMetrics
+    pairs: tuple[ValidationPair, ...] = ()
+    current_summary: ValidationSummary | None = None
+    candidate_summary: ValidationSummary | None = None
+    sampling: ValidationSampling | None = None
     limitations: tuple[str, ...] = ()
-    # 单 Run 指标之外的分布、置信区间与子类统计在 P4 增补。
 
 
 class GateResult(FrozenModel):

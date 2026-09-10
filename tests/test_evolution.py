@@ -16,6 +16,7 @@ from evoteam.domain.evolution import (
     MutationProposal,
     MutationType,
     TriggerType,
+    ValidationPair,
     ValidationPlan,
     ValidationResult,
 )
@@ -44,7 +45,10 @@ def test_packaged_validation_dataset_resolves_by_versioned_reference():
     tasks = PackagedValidationDatasets().load(
         AssetRef(id="project-planning-validation", version="1")
     )
-    assert tuple(task.task_id for task in tasks) == ("validation-resource-sequence",)
+    assert tuple(task.task_id for task in tasks) == (
+        "validation-resource-sequence",
+        "validation-skill-routing",
+    )
 
 
 def configured_current() -> Strategy:
@@ -174,6 +178,11 @@ class FixedEvidenceAttributor(OutcomeAttributor):
         )
 
 
+class FixtureHistoryValidator:
+    async def validate(self, evidence):
+        return ()
+
+
 @pytest.mark.asyncio
 async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
     storage = SQLiteStorage(f"sqlite:///{tmp_path / 'evolution.db'}")
@@ -201,6 +210,7 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
         lifecycle=StrategyLifecycle(ports.strategies),
         strategies=ports.strategies,
         records=ports.evolutions,
+        history_validator=FixtureHistoryValidator(),
     )
     evidence = failure_evidence(current)
     policy = EvolutionPolicy(
@@ -239,6 +249,8 @@ async def test_prompt_evolution_promotes_only_after_paired_validation(tmp_path):
             ref=AssetRef(id="gate", version="1"),
             minimum_quality_gain=0,
             minimum_paired_runs=2,
+            minimum_independent_tasks=1,
+            maximum_subclass_success_regression=0,
             maximum_quality_regression=0,
             maximum_token_increase=0,
             maximum_latency_increase=1000,
@@ -342,26 +354,38 @@ class ControlledValidator:
 
     async def validate(self, current, candidate, plan):
         has_verifier = any(agent.role.value == "verifier" for agent in candidate.definition.agents)
+        current_metrics = RunMetrics(
+            success=False, hard_constraint_errors=1, tokens=100, latency_seconds=2
+        )
+        candidate_metrics = RunMetrics(
+            success=True,
+            hard_constraint_errors=0,
+            tokens=70 if has_verifier else 80,
+            latency_seconds=1,
+        )
+        pairs = tuple(
+            ValidationPair(
+                task_id=f"task-{i}",
+                task_fingerprint=f"fingerprint-{i}",
+                subclass="controlled",
+                repeat_index=0,
+                current_run_id=f"current-{candidate.metadata.ref.version}-{i}",
+                candidate_run_id=f"candidate-{candidate.metadata.ref.version}-{i}",
+                current_metrics=current_metrics,
+                candidate_metrics=candidate_metrics,
+            )
+            for i in range(2)
+        )
         return ValidationResult(
             validation_id=f"validation-{candidate.metadata.ref.version}",
             current=current.metadata.ref,
             candidate=candidate.metadata.ref,
             plan=plan,
-            current_run_ids=tuple(
-                f"current-{candidate.metadata.ref.version}-{i}" for i in range(2)
-            ),
-            candidate_run_ids=tuple(
-                f"candidate-{candidate.metadata.ref.version}-{i}" for i in range(2)
-            ),
-            current_metrics=RunMetrics(
-                success=False, hard_constraint_errors=1, tokens=100, latency_seconds=2
-            ),
-            candidate_metrics=RunMetrics(
-                success=True,
-                hard_constraint_errors=0,
-                tokens=70 if has_verifier else 80,
-                latency_seconds=1,
-            ),
+            current_run_ids=tuple(pair.current_run_id for pair in pairs),
+            candidate_run_ids=tuple(pair.candidate_run_id for pair in pairs),
+            current_metrics=current_metrics,
+            candidate_metrics=candidate_metrics,
+            pairs=pairs,
         )
 
 
@@ -380,6 +404,7 @@ async def test_multiple_candidates_select_one_and_persist_full_artifacts(tmp_pat
         lifecycle=StrategyLifecycle(ports.strategies),
         strategies=ports.strategies,
         records=ports.evolutions,
+        history_validator=FixtureHistoryValidator(),
     )
     evidence = failure_evidence(current)
     policy = EvolutionPolicy(
@@ -419,6 +444,8 @@ async def test_multiple_candidates_select_one_and_persist_full_artifacts(tmp_pat
             ref=AssetRef(id="gate", version="multi"),
             minimum_quality_gain=0,
             minimum_paired_runs=2,
+            minimum_independent_tasks=2,
+            maximum_subclass_success_regression=0,
             maximum_quality_regression=0,
             maximum_token_increase=0,
             maximum_latency_increase=0,

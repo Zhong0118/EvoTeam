@@ -15,6 +15,7 @@ from evoteam.domain.evolution import (
 from evoteam.domain.run import SealedRun
 from evoteam.domain.strategy import Strategy
 from evoteam.evolution.attribution import OutcomeAttributor
+from evoteam.evolution.datasets import HistoryEvidenceValidator
 from evoteam.evolution.gate import GatePolicy, ValidationGate
 from evoteam.evolution.lifecycle import StrategyLifecycle
 from evoteam.evolution.mutation import CandidateGenerator
@@ -34,6 +35,7 @@ class EvolutionManager:
         lifecycle: StrategyLifecycle,
         strategies: StrategyStore,
         records: EvolutionStore,
+        history_validator: HistoryEvidenceValidator,
     ) -> None:
         self.attributor = attributor
         self.generator = generator
@@ -42,6 +44,7 @@ class EvolutionManager:
         self.lifecycle = lifecycle
         self.strategies = strategies
         self.records = records
+        self.history_validator = history_validator
 
     async def evolve(
         self,
@@ -67,6 +70,7 @@ class EvolutionManager:
             for run in evidence
         ):
             raise ValueError("演进证据与 Trigger 范围不匹配")
+        await self.history_validator.validate(evidence)
         evolution_id = evidence_id(
             "evolution", [trigger.trigger_id, current.metadata.ref.model_dump()]
         )

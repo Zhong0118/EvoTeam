@@ -1,0 +1,13 @@
+{
+  "ref": {"id": "project-planning-monitor", "version": "n4-baseline-c1204d3"},
+  "window_size": 6,
+  "min_samples": 6,
+  "repeated_failure_threshold": 2,
+  "quality_drop_threshold": 0.1,
+  "cost_overrun_threshold": 0.25,
+  "low_contribution_threshold": 0.01,
+  "cooldown_runs": 6,
+  "max_candidates": 2,
+  "stable_window_count": 3,
+  "enabled_triggers": ["repeated_failure"]
+}

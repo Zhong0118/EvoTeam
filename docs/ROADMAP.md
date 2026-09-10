@@ -71,6 +71,6 @@
 
 结构 Mutation 属于核心闭环验收，不再沿用“先做完整 Prompt 产品，之后才考虑 Team Evolution”的路线。UI 随已有证据逐步实现，不能用静态展示替代尚未运行的治理机制。
 
-下一步固定已接入模型的配置与独立任务分区，扩充 History / Validation / Final Test 数据，统计基线后预注册 Monitor 与 Gate。随后补逐任务配对指标、负迁移检查和真实晋级后的未来任务验证，再开展 Tool Policy、贡献消融及自动生命周期实验。运行命令见 [SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)，本次审查与分工建议见 [VERSION_COMPARISON.md](VERSION_COMPARISON.md)。P2–P4 不因少量模型调用或可控 Fake Runtime 晋级测试通过就整体验收。
+已补齐迁移、版本化数据隔离、封存来源、逐任务配对指标与回归 Gate；有限 N4 对照入口已实现，真实运行待模型配置。下一步收尾有限 N4，完善主场景不可行任务的评价语义，扩充独立数据并校准正式规则；之后验证真实晋级和未来任务影响，再开展 Tool Policy、贡献消融及自动治理。运行命令见 [SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)，本次审查与分工建议见 [VERSION_COMPARISON.md](VERSION_COMPARISON.md)。P2–P4 不因少量模型调用或可控 Fake Runtime 晋级测试通过就整体验收。
 
-近期任务与分工见 [负责人总览](NEXT_STEPS.md)：A0、N1–N4 为核心线，B0–B4 为展示/PPT线。它不是完整第一版的全部任务；Tool/贡献消融、自动治理和三类实验仍按本路线图验收。PPT逐页内容与布局见 [汇报设计](PRESENTATION_PLAN.md)。
+近期任务与分工见 [负责人总览](NEXT_STEPS.md)：A0、N1–N3 已交付，核心下一轮 R1/R2 及后续 R3–R7 见 TASK_CORE；B0–B4 为展示/PPT线。它不是完整第一版的全部任务；Tool/贡献消融、自动治理和三类实验仍按本路线图验收。PPT逐页内容与布局见 [汇报设计](PRESENTATION_PLAN.md)。

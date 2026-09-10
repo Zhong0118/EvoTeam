@@ -1,12 +1,22 @@
 """独立批量实验器；比较执行不等同于 Gate 判定。"""
 
 import asyncio
+import math
 from statistics import fmean
 from typing import Protocol
 from uuid import uuid4
 
+from evoteam.domain.dataset import DatasetPartition
 from evoteam.domain.evaluation import RunMetrics
-from evoteam.domain.evolution import ValidationPlan, ValidationResult
+from evoteam.domain.evolution import (
+    LatencyDistribution,
+    SubclassValidationSummary,
+    ValidationPair,
+    ValidationPlan,
+    ValidationResult,
+    ValidationSampling,
+    ValidationSummary,
+)
 from evoteam.domain.run import RunPurpose, RunStatus
 from evoteam.domain.strategy import Strategy
 from evoteam.evaluation.evaluator import Evaluator
@@ -72,22 +82,18 @@ class Validator:
                 for source in originals.values()
             ):
                 raise ValueError("公平比较的新增节点必须沿用已登记的模型和能力限制")
-        tasks = self.datasets.load(plan.dataset_ref)
+        tasks = self.datasets.load(plan.dataset_ref, partition=DatasetPartition.VALIDATION)
         if not tasks:
             raise ValueError("验证集不能为空")
         if len(plan.seeds) != plan.repeats:
             raise ValueError("首版要求每次重复提供一个明确 seed")
 
-        current_run_ids: list[str] = []
-        candidate_run_ids: list[str] = []
-        current_metrics: list[RunMetrics] = []
-        candidate_metrics: list[RunMetrics] = []
+        pairs: list[ValidationPair] = []
         for repeat, _seed in enumerate(plan.seeds):
             for task in tasks:
-                for selected, ids, metrics in (
-                    (current, current_run_ids, current_metrics),
-                    (candidate, candidate_run_ids, candidate_metrics),
-                ):
+                source = self.datasets.source_for(task, partition=DatasetPartition.VALIDATION)
+                sealed_runs = []
+                for selected in (current, candidate):
                     run_id = f"validation-{repeat}-{uuid4()}"
                     task_copy = task.model_copy(deep=True)
                     run = await self.orchestrator.execute(
@@ -104,6 +110,7 @@ class Validator:
                         RunStatus.CANCELLED,
                     }:
                         raise ValueError("验证 Run 未终结")
+                    run.dataset_source = source
                     evaluation = await self.evaluator.evaluate(task_copy, run)
                     if evaluation.evaluator_ref != plan.evaluator_ref:
                         raise ValueError("实际 Evaluator 与预注册 ValidationPlan 不一致")
@@ -112,20 +119,98 @@ class Validator:
                     )
                     if run.status == RunStatus.CANCELLED:
                         raise asyncio.CancelledError("验证已取消；终止后续模型调用")
-                    ids.append(sealed.run_id)
-                    metrics.append(sealed.evaluation.metrics)
+                    sealed_runs.append(sealed)
+                pairs.append(
+                    ValidationPair(
+                        task_id=source.task_id,
+                        task_fingerprint=source.task_fingerprint,
+                        subclass=source.subclass,
+                        repeat_index=repeat,
+                        current_run_id=sealed_runs[0].run_id,
+                        candidate_run_id=sealed_runs[1].run_id,
+                        current_metrics=sealed_runs[0].evaluation.metrics,
+                        candidate_metrics=sealed_runs[1].evaluation.metrics,
+                    )
+                )
 
         validation_id = str(uuid4())
+        current_metrics = [pair.current_metrics for pair in pairs]
+        candidate_metrics = [pair.candidate_metrics for pair in pairs]
+        current_summary = self._summary(pairs, candidate=False)
+        candidate_summary = self._summary(pairs, candidate=True)
+        limitations = ["seed_not_applied"]
+        if min(current_summary.latency.sample_count, candidate_summary.latency.sample_count) < 20:
+            limitations.append("latency_p95_unstable_small_sample")
         return ValidationResult(
             validation_id=validation_id,
             current=current.metadata.ref,
             candidate=candidate.metadata.ref,
             plan=plan,
-            current_run_ids=tuple(current_run_ids),
-            candidate_run_ids=tuple(candidate_run_ids),
+            current_run_ids=tuple(pair.current_run_id for pair in pairs),
+            candidate_run_ids=tuple(pair.candidate_run_id for pair in pairs),
             current_metrics=self._aggregate(current_metrics),
             candidate_metrics=self._aggregate(candidate_metrics),
-            limitations=("seed_not_applied", "aggregate_metrics_only"),
+            pairs=tuple(pairs),
+            current_summary=current_summary,
+            candidate_summary=candidate_summary,
+            sampling=ValidationSampling(repeats=plan.repeats, seeds=plan.seeds, seed_applied=False),
+            limitations=tuple(limitations),
+        )
+
+    @classmethod
+    def _summary(cls, pairs: list[ValidationPair], *, candidate: bool) -> ValidationSummary:
+        selected = [
+            (pair, pair.candidate_metrics if candidate else pair.current_metrics) for pair in pairs
+        ]
+        groups: dict[str, list[tuple[ValidationPair, RunMetrics]]] = {}
+        for pair, metrics in selected:
+            groups.setdefault(pair.subclass, []).append((pair, metrics))
+
+        def summarize(values: list[tuple[ValidationPair, RunMetrics]]):
+            successes = [metrics.success for _, metrics in values]
+            return (
+                sum(value is True for value in successes),
+                len(values),
+                sum(value is None for value in successes),
+                len({pair.task_fingerprint for pair, _ in values}),
+                cls._latency([metrics.latency_seconds for _, metrics in values]),
+            )
+
+        success, total, unknown, independent, latency = summarize(selected)
+        subclasses = tuple(
+            SubclassValidationSummary(
+                subclass=name,
+                success_count=stats[0],
+                total_count=stats[1],
+                unknown_success_count=stats[2],
+                independent_task_count=stats[3],
+                latency=stats[4],
+            )
+            for name, values in sorted(groups.items())
+            for stats in (summarize(values),)
+        )
+        return ValidationSummary(
+            success_count=success,
+            total_count=total,
+            unknown_success_count=unknown,
+            independent_task_count=independent,
+            subclasses=subclasses,
+            latency=latency,
+        )
+
+    @staticmethod
+    def _latency(values: list[float | None]) -> LatencyDistribution:
+        known = sorted(value for value in values if value is not None)
+        if not known:
+            return LatencyDistribution(sample_count=0)
+
+        def percentile(probability: float) -> float:
+            return known[max(0, math.ceil(probability * len(known)) - 1)]
+
+        return LatencyDistribution(
+            sample_count=len(known),
+            p50_seconds=percentile(0.50),
+            p95_seconds=percentile(0.95),
         )
 
     @staticmethod
