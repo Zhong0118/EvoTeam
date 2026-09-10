@@ -2,7 +2,7 @@
 
 ## 当前仓库状态
 
-已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已落库；审查补齐了 Trigger 原子消费、取消终止、公平比较与 Gate 缺失证据阻断；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 和前端仍待完成。
+已有项目规划 v1 契约、规则评价、受限 3/4 节点 DAG、一次有界返工、SQLite 封存和无模型演示。已接真实 openJiuwen ReActAgent、init/run/observe/evolve、重复错误监控、Prompt/Verifier 多候选、配对验证、Gate 与生命周期。归因、提案、验证和治理记录已落库；审查补齐了 Trigger 原子消费、取消终止、公平比较与 Gate 缺失证据阻断。SQLite 已提供显式备份迁移入口；DeepSeek 已完成真实 Gate Reject 实验，其他监控信号、Tool/Skill 演进、更通用结构 Mutation 和前端仍待完成。
 
 开发前阅读 README、AGENTS、PROJECT、ARCHITECTURE、ROADMAP；演进和评价工作同时阅读 EXPERIMENTS、DECISIONS。产品与架构按最终讨论冻结，现有骨架按 P0–P5 逐步填充逻辑。
 
@@ -187,5 +187,25 @@ uv run python -m evoteam serve
 SDK 0.1.17.post1 的导入和 SSL 代码会产生上游弃用警告，当前测试保留这些警告；不将其隐藏成无警告结果。
 
 Adapter 的清理直接使用 SDK 的公开 checkpoint/context 释放接口。锁定版本的 `ReActAgent.clear_session` 会经全局 Runner 导入无关 Team/Evolving 可选依赖，当前不走该路径，也不为此扩大项目依赖。
+
+## SQLite 数据库升级与恢复
+
+`init` 只创建全新数据库，不能用于给旧库补表。当前代码使用 SQLite `user_version=3`，只识别仓库历史中的 6 表基础布局、11 表演进布局和当前 12 表布局；表集合、列结构或版本标记未知时拒绝迁移。升级不会重建运行表，也不会改写 Strategy、Event、Run、Prompt 引用或活动 evolution claim。
+
+升级前停止所有 `serve`、`run`、`observe` 和 `evolve` 进程，确保没有其他连接写数据库。备份参数必须指向尚不存在的新文件：
+
+```bash
+uv run python -m evoteam migrate \
+  --database /absolute/path/evoteam.sqlite3 \
+  --backup /absolute/path/evoteam.before-v3.sqlite3
+```
+
+命令先用 SQLite backup API 生成一致备份并执行 `PRAGMA quick_check`，成功后才以排他事务升级原库。6 表库会根据既有 Strategy 的最大版本初始化 `strategy_counters`；11 表库只补 `evolution_claims`；12 表库只校验并登记版本。成功输出：
+
+```json
+{"migrated": true, "schema_version": 3}
+```
+
+失败时不要删除备份或反复使用同一备份路径。先保持应用停止，使用 `sqlite3 <备份路径> 'PRAGMA quick_check;'` 验证备份；保留失败数据库作为独立文件，再把备份复制回原数据库路径。备份仍是迁移前布局：若继续使用当前代码，应为恢复后的库选择另一个新备份路径并重新执行迁移；若临时回退旧代码，则直接使用与该旧代码对应的备份布局。迁移不能恢复因进程硬退出遗留的活动 claim，也不会自动清除它。
 
 本次 main 与功能分支的审查、进展和后续次序统一维护在 [VERSION_COMPARISON](docs/VERSION_COMPARISON.md)。新增 evolution_claims 表；旧数据库不能直接 open，升级需备份后显式建表并核验，不删除原始运行证据。当前没有自动迁移或进程崩溃后的 claim 恢复工具。

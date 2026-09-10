@@ -48,10 +48,10 @@ async def list_records(
 ) -> tuple[tuple[EvolutionRecord, ...], str | None]: ...
 ```
 
-- [ ] 先测试缺失 ID 的明确查找失败、空列表、跨策略/用途隔离、分页稳定性、非法 limit/cursor、读取不产生写入。
-- [ ] 用稳定排序和不透明 cursor 实现分页；Run 按 sealed_at/run_id，版本按 version；Evolution 使用确定的排序键并写明。cursor须绑定过滤条件，不在不同查询间混用。
-- [ ] 缺失单条记录统一为 KeyError；旧数据缺少字段保持 None，不推断时间、成本或晋级历史。不得返回模型凭据。
-- [ ] 跑 `uv run pytest tests/test_read_queries.py -q` 及完整检查。
+- [x] 先测试缺失 ID 的明确查找失败、空列表、跨策略/用途隔离、分页稳定性、非法 limit/cursor、读取不产生写入。
+- [x] 用稳定排序和不透明 cursor 实现分页；Run 按 sealed_at/run_id，版本按 version；Evolution 使用确定的排序键并写明。cursor须绑定过滤条件，不在不同查询间混用。
+- [x] 缺失单条记录统一为 KeyError；旧数据缺少字段保持 None，不推断时间、成本或晋级历史。不得返回模型凭据。
+- [x] 跑 `uv run pytest tests/test_read_queries.py -q` 及完整检查。
 - [ ] 交付接口签名、排序/错误行为、测试结果和示例调用；通过验收纳入 main 后把提交号发给 B。不要要求负责人自己补端口。
 
 **交接验收：** B能通过端口取得列表、封存索引及已有详细证据，不需读SQL或等待N4。A0与N1都改sqlite.py，由A顺序处理，不并行编辑同一文件。
@@ -65,10 +65,10 @@ async def list_records(
 
 **接口约定：** `upgrade_database(database: Path, *, backup: Path) -> None`；CLI 为 `python -m evoteam migrate --database <已有库> --backup <新备份路径>`。只针对已识别的六表基础版本、组员十一表版本和当前十二表版本；未知布局拒绝。
 
-- [ ] 写回归测试：使用旧表布局创建库并保存固定策略、事件和封存记录；升级后原记录逐字段不变，新增表可用；二次升级不改证据。
-- [ ] 覆盖错误路径：备份路径已存在、数据库缺失、未知列结构、备份失败时不得执行迁移；失败不能留下半升级状态。
-- [ ] 执行 `uv run pytest tests/test_migrations.py -q`，确认新行为尚未实现导致失败。
-- [ ] 使用 SQLite backup API 生成一致备份，显式识别布局，事务补齐缺失表并保存 Schema 版本；不得重建或清空运行表。升级期间要求停止写入，CLI 检查成功后再开放服务。
+- [x] 写回归测试：使用旧表布局创建库并保存固定策略、事件和封存记录；升级后原记录逐字段不变，新增表可用；二次升级不改证据。
+- [x] 覆盖错误路径：备份路径已存在、数据库缺失、未知列结构、备份失败时不得执行迁移；失败不能留下半升级状态。
+- [x] 执行 `uv run pytest tests/test_migrations.py -q`，确认新行为尚未实现导致失败。
+- [x] 使用 SQLite backup API 生成一致备份，显式识别布局，事务补齐缺失表并保存 Schema 版本；不得重建或清空运行表。升级期间要求停止写入，CLI 检查成功后再开放服务。
 - [ ] 执行测试和全仓检查，更新升级命令及恢复说明，提交独立 PR。
 
 目标调用方式：

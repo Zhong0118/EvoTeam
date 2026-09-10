@@ -41,6 +41,7 @@ from evoteam.domain.task import Task
 from evoteam.experience.store import ExperienceStore
 from evoteam.monitoring.state import MonitorState, MonitorStore
 from evoteam.runtime.models import ModelEndpoint
+from evoteam.storage.migrations import CURRENT_SCHEMA_VERSION
 from evoteam.storage.protocol import EvolutionStore, RunStore, StrategyStore
 
 metadata = MetaData()
@@ -989,12 +990,26 @@ class SQLiteStorage:
 
     async def initialize(self) -> None:
         """显式创建当前所需表；后续 Schema 升级需迁移，不自动改现有表。"""
-        metadata.create_all(self._connect())
+        engine = self._connect()
+        existing_tables = set(inspect(engine).get_table_names())
+        if existing_tables:
+            with engine.connect() as conn:
+                schema_version = conn.exec_driver_sql("PRAGMA user_version").scalar_one()
+            if existing_tables != set(metadata.tables) or schema_version != CURRENT_SCHEMA_VERSION:
+                raise ValueError("已有数据库不能通过 initialize 升级，请先备份并运行 migrate")
+            return
+        metadata.create_all(engine)
+        with engine.begin() as conn:
+            conn.exec_driver_sql(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
 
     async def open(self) -> StoragePorts:
         engine = self._connect()
-        if not set(metadata.tables) <= set(inspect(engine).get_table_names()):
+        if set(inspect(engine).get_table_names()) != set(metadata.tables):
             raise ValueError("数据库未初始化，请显式调用 initialize")
+        with engine.connect() as conn:
+            schema_version = conn.exec_driver_sql("PRAGMA user_version").scalar_one()
+        if schema_version != CURRENT_SCHEMA_VERSION:
+            raise ValueError("数据库 Schema 版本过旧，请先运行 migrate")
         return StoragePorts(
             SQLiteRunStore(engine),
             SQLiteStrategyStore(engine),
