@@ -67,10 +67,10 @@
 
 ## 实施次序与分工
 
-核心证据与治理能力按 P0 → P1 → P2 → P3 → P4 的依赖推进；P5 的实验验收依赖相应证据，可视化页面、只读数据接口和 PPT 设计可提前并行。推荐一位组员负责核心后端，一位负责展示接口/前端/PPT，负责人承担数据、实验和集成验收；按实际技能调整，详细任务见 NEXT_STEPS。
+核心证据与治理能力按 P0 → P1 → P2 → P3 → P4 的依赖推进；P5 的实验验收依赖相应证据，可视化页面、只读数据接口和 PPT 设计可提前并行。推荐一位组员负责核心后端，一位负责展示接口/前端/PPT，核心组员完整准备数据、执行实验并提交报告，展示组员完成接口集成及讲稿，负责人仅审查、确认实验规则与预算、验收。具体边界见 [任务书 A](TASK_CORE.md) 和 [任务书 B](TASK_PRESENTATION.md)。
 
 结构 Mutation 属于核心闭环验收，不再沿用“先做完整 Prompt 产品，之后才考虑 Team Evolution”的路线。UI 随已有证据逐步实现，不能用静态展示替代尚未运行的治理机制。
 
 下一步固定已接入模型的配置与独立任务分区，扩充 History / Validation / Final Test 数据，统计基线后预注册 Monitor 与 Gate。随后补逐任务配对指标、负迁移检查和真实晋级后的未来任务验证，再开展 Tool Policy、贡献消融及自动生命周期实验。运行命令见 [SYSTEM_WALKTHROUGH.md](SYSTEM_WALKTHROUGH.md)，本次审查与分工建议见 [VERSION_COMPARISON.md](VERSION_COMPARISON.md)。P2–P4 不因少量模型调用或可控 Fake Runtime 晋级测试通过就整体验收。
 
-近期任务与分工见 [并行开发与交付计划](NEXT_STEPS.md)：N1–N4 为核心线，B0–B4 为展示/PPT线。它不是完整第一版的全部任务；Tool/贡献消融、自动治理和三类实验仍按本路线图验收。PPT逐页内容与布局见 [汇报设计](PRESENTATION_PLAN.md)。
+近期任务与分工见 [负责人总览](NEXT_STEPS.md)：A0、N1–N4 为核心线，B0–B4 为展示/PPT线。它不是完整第一版的全部任务；Tool/贡献消融、自动治理和三类实验仍按本路线图验收。PPT逐页内容与布局见 [汇报设计](PRESENTATION_PLAN.md)。
