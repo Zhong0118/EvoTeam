@@ -114,7 +114,7 @@ export function Evolutions() {
                     </span>
                     <Link
                       className="view-link"
-                      to={`/evolutions/${encodeURIComponent(r.evolution_id)}`}
+                      to={`/dashboard/evolutions/${encodeURIComponent(r.evolution_id)}`}
                     >
                       查看证据链 <ArrowRight size={14} />
                     </Link>
@@ -278,12 +278,12 @@ export function ValidationPanel({ value: v }: { value: Validation }) {
                       {p.subclass} / {p.repeat_index}
                     </td>
                     <td>
-                      <Link to={`/runs/${p.current_run_id}`}>
+                      <Link to={`/dashboard/runs/${p.current_run_id}`}>
                         {p.current_run_id}
                       </Link>
                     </td>
                     <td>
-                      <Link to={`/runs/${p.candidate_run_id}`}>
+                      <Link to={`/dashboard/runs/${p.candidate_run_id}`}>
                         {p.candidate_run_id}
                       </Link>
                     </td>
@@ -303,8 +303,7 @@ export function EvolutionDetail() {
   const { evolutionId = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const stage = params.get("stage") || "trigger";
-  const query = useEvidence(
-    `/evolutions/${encodeURIComponent(evolutionId)}`,
+  const query = useEvidence(`/evolutions/${encodeURIComponent(evolutionId)}`,
     evolutionDetailSchema,
   );
   const d = query.value?.data;
@@ -326,7 +325,7 @@ export function EvolutionDetail() {
   ];
   return (
     <>
-      <Link className="back-link" to="/evolutions">
+      <Link className="back-link" to="/dashboard/evolutions">
         <ArrowLeft size={14} /> 演进记录
       </Link>
       <PageTitle title="演进证据链" description={evolutionId} />
@@ -363,7 +362,7 @@ export function EvolutionDetail() {
                   {r.trigger.evidence_run_ids.length ? (
                     r.trigger.evidence_run_ids.map((id) => (
                       <p key={id}>
-                        <Link to={`/runs/${encodeURIComponent(id)}`}>
+                        <Link to={`/dashboard/runs/${encodeURIComponent(id)}`}>
                           {id} →
                         </Link>
                       </p>
@@ -505,7 +504,7 @@ export function EvolutionDetail() {
                 ))}
                 <Link
                   className="view-link"
-                  to={`/strategies/${r.trigger.strategy.strategy_id}`}
+                  to={`/dashboard/strategies/${r.trigger.strategy.strategy_id}`}
                 >
                   查看策略版本 <ArrowRight size={14} />
                 </Link>

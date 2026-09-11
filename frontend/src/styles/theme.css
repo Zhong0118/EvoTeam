@@ -8,18 +8,22 @@
   font-family:
     -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
     sans-serif;
-  color: #243541;
-  background: #f4f6f8;
+  color: #1f2328;
+  background: #fafafa;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --background: #f4f6f8;
-  --foreground: #243541;
-  --primary: #326e78;
-  --border: #e0e6eb;
-  --muted: #667783;
+  /* V2 spec §24 unified palette */
+  --background: #fafafa;
+  --foreground: #1f2328;
+  --primary: #356ae6;
+  --border: #e6e6e3;
+  --muted: #7b8189;
   --surface: #fff;
-  --candidate: #7660a8;
+  --candidate: #8657d9;
+  --destructive: #c94f4f;
+  --pending: #c98926;
+  --success: #46a56d;
 }
 * {
   box-sizing: border-box;
@@ -839,6 +843,243 @@ td .tiny {
   margin-left: auto;
   color: #8e9fa9;
 }
+.track-wrap {
+  position: relative;
+}
+.track {
+  max-height: 560px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 2px 4px 0;
+  scrollbar-width: thin;
+}
+.track-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 0 12px;
+}
+.track-rail::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e5ebef;
+}
+.track-rail.last::before {
+  bottom: 22px;
+}
+.track-dot {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin-top: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #b9c6ce;
+  justify-self: center;
+}
+.track-dot.running {
+  border-color: var(--primary);
+}
+.track-dot.completed {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.track-dot.failed {
+  background: var(--destructive);
+  border-color: var(--destructive);
+}
+.track-dot.system {
+  background: #667783;
+  border-color: #667783;
+  width: 8px;
+  height: 8px;
+  margin-top: 21px;
+}
+.track-dot.pulse {
+  animation: track-pulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@keyframes track-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(50, 110, 120, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(50, 110, 120, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(50, 110, 120, 0);
+  }
+}
+.track-step {
+  position: relative;
+  display: block;
+  width: 100%;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: white;
+  text-align: left;
+  padding: 12px 10px 12px 6px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  transition:
+    background 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: track-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes track-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.track-step:hover {
+  background: #f2f6f8;
+}
+.track-step.selected {
+  background: #edf4f6;
+  box-shadow:
+    0 0 0 1px var(--primary),
+    0 6px 18px -12px rgba(50, 110, 120, 0.55);
+}
+.track-step.failed strong {
+  color: var(--destructive);
+}
+.track-step.system {
+  padding: 8px 10px 8px 6px;
+  min-height: 0;
+}
+.track-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.track-node {
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  background: #e7f0f1;
+  border-radius: 5px;
+  padding: 2px 5px;
+}
+.track-step.system .track-node {
+  display: none;
+}
+.track-head strong {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.track-time {
+  margin-left: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  color: #90a0aa;
+}
+.track-step .track-open {
+  display: none;
+}
+.track-instance {
+  display: block;
+  font-size: 9.5px;
+  color: #7d8f9a;
+  margin-top: 2px;
+  font-family: ui-monospace, monospace;
+}
+.track-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.track-chips .chip {
+  font-size: 10px;
+  background: #f0f4f6;
+  border: 1px solid #e0e6eb;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: #46585f;
+}
+.track-summary {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #33454f;
+}
+.track-flow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--primary);
+}
+.track-caused {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: #a4b2ba;
+  font-family: ui-monospace, monospace;
+}
+.track-step details {
+  margin-top: 7px;
+}
+.track-step details summary {
+  cursor: pointer;
+  font-size: 10.5px;
+  color: var(--primary);
+}
+.track-step details pre {
+  max-height: 220px;
+  overflow: auto;
+}
+.track-streaming {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 14px 0;
+  color: #7d8f9a;
+  font-size: 11px;
+}
+.track-streaming .track-dot {
+  margin-top: 0;
+}
+.track-jump {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: white;
+  color: #33454f;
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  box-shadow: 0 8px 22px -14px rgba(36, 53, 65, 0.5);
+  cursor: pointer;
+}
+.track-jump:hover {
+  color: var(--primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-step,
+  .track-dot.pulse {
+    animation: none;
+  }
+  .track {
+    scroll-behavior: auto;
+  }
+}
 .playback {
   display: flex;
   align-items: center;
@@ -1428,3 +1669,4 @@ th,
     flex-wrap: wrap;
   }
 }
+

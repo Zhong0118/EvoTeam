@@ -156,6 +156,13 @@ uv run python -m evoteam serve
 | `evolution/lifecycle.py` | 已实现 Promote / Reject / Stable / Reopen / Rollback 合法转换 |
 | `evolution/manager.py` | 已实现多个单因素候选的生成、独立验证、确定性选择和统一生命周期收尾 |
 
+### 网页执行契约
+
+| 文件 | 当前方法与后续职责 |
+| --- | --- |
+| `execution/models.py` | 已固定 F0 契约：SubmitExecution（提交即校验 planning-input@1）、ExecutionView 生命周期不变式、TraceEventView/ExecutionEventsPage；端点与作业服务在 F1/F2 实现 |
+| `frontend/src/data/executions.ts` | 与 Python 契约同构的 Zod Schema 及 PlanningInput 校验镜像；共用样例 `frontend/src/fixtures/execution-samples.json` |
+
 ### 持久化与测试
 
 | 文件 | 当前方法与后续职责 |
@@ -174,6 +181,7 @@ uv run python -m evoteam serve
 | `tests/test_monitoring.py` | 跨 Run 模式、冷却、重开数据库及并发检查 |
 | `tests/test_live_provider.py` | 显式启用的真实模型冒烟；默认跳过 |
 | `tests/test_application.py` | 使用记录调用的替身验证跨模块顺序、隔离、版本竞争与异常传播 |
+| `tests/test_execution_contracts.py` | F0 网页执行契约：提交反例、状态视图不变式与两侧共用样例 |
 
 上表中省略 `evoteam/` 的相对路径均以该包为根。Protocol 中的省略号只声明接口。当前结构演进只允许新增唯一 Verifier 及固定必要连边，不表示任意拓扑、Tool Policy 与贡献消融已经实现。
 

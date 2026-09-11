@@ -28,6 +28,7 @@ import {
   SourceNote,
   time,
 } from "../components/evidence/common";
+import { RunTrack } from "../components/evidence/run-track";
 import { useEvidence } from "../data/client";
 import { eventsSchema, runSchema } from "../data/schema";
 const names: Record<string, string> = {
@@ -43,7 +44,13 @@ const names: Record<string, string> = {
   tool_called: "调用工具",
   tool_result: "工具结果",
 };
-export function Trace() {
+export function Trace({
+  runId: injected,
+  embedded = false,
+}: {
+  runId?: string;
+  embedded?: boolean;
+} = {}) {
   const [compact, setCompact] = useState(
     () => window.matchMedia("(max-width: 767px)").matches,
   );
@@ -53,7 +60,8 @@ export function Trace() {
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  const { runId = "" } = useParams();
+  const { runId: paramRunId = "" } = useParams();
+  const runId = injected ?? paramRunId;
   const [params, setParams] = useSearchParams();
   const query = useEvidence(
     runId ? `/runs/${encodeURIComponent(runId)}` : null,
@@ -136,23 +144,36 @@ export function Trace() {
     connectable: false,
     style: { width: 200 },
   }));
-  const graphEdges = (r?.edges ?? []).map((e, i) => ({
-    id: `edge-${i}`,
-    source: e.source,
-    target: e.target,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    animated: false,
-    label: e.condition_ref ? "条件路由" : undefined,
-    style: e.condition_ref ? { strokeDasharray: "5 5" } : undefined,
-  }));
+  const graphEdges = (r?.edges ?? []).map((e, i) => {
+    const next = playing ? list[index + 1] : undefined;
+    const currentEvent = playing ? list[index] : undefined;
+    const flowing =
+      playing &&
+      !!currentEvent?.node_id &&
+      !!next?.node_id &&
+      currentEvent.node_id !== next.node_id &&
+      e.source === currentEvent.node_id &&
+      e.target === next.node_id;
+    return {
+      id: `edge-${i}`,
+      source: e.source,
+      target: e.target,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      animated: flowing,
+      label: e.condition_ref ? "条件路由" : undefined,
+      style: e.condition_ref ? { strokeDasharray: "5 5" } : undefined,
+    };
+  });
   return (
     <>
-      <Link
-        className="back-link"
-        to={runId ? `/runs/${encodeURIComponent(runId)}` : "/runs"}
-      >
-        <ArrowLeft size={14} /> {runId ? "任务详情" : "运行记录"}
-      </Link>
+      {!embedded && (
+        <Link
+          className="back-link"
+          to={runId ? `/runs/${encodeURIComponent(runId)}` : "/dashboard/runs"}
+        >
+          <ArrowLeft size={14} /> {runId ? "任务详情" : "运行记录"}
+        </Link>
+      )}
       <PageTitle
         title="团队与执行证据"
         description={
@@ -163,7 +184,7 @@ export function Trace() {
       />
       {!runId ? (
         <Empty title="尚未选择 Run">
-          <Link to="/runs">前往运行记录选择 →</Link>
+          <Link to="/dashboard/runs">前往运行记录选择 →</Link>
         </Empty>
       ) : (
         <>
@@ -213,39 +234,34 @@ export function Trace() {
                   </div>
                   <div className="graph-legend">
                     <span className="dot" /> 配置节点 <span>→ 信息流</span>
-                    <span>实例详情见右侧事件</span>
+                    <span>右侧轨道展示实际执行次序与结果</span>
                   </div>
                 </Panel>
                 <Panel
-                  title="事件时间线"
-                  aside={<Badge>{list.length} 条事件</Badge>}
+                  title="运行轨道"
+                  aside={
+                    <>
+                      <Badge>{list.length} 步</Badge>
+                      {playing && <Badge value="执行中" />}
+                    </>
+                  }
                 >
                   <QueryState {...events} retry={events.refresh} />
-                  <div className="event-list">
-                    {list.map((e, i) => (
-                      <button
-                        key={e.event_id}
-                        className={`event-row ${i === index ? "selected" : ""}`}
-                        onClick={() => {
-                          setPlaying(false);
-                          select(i);
-                          setDrawer(true);
-                        }}
-                      >
-                        <span className="event-index">
-                          {String(e.sequence).padStart(2, "0")}
-                        </span>
-                        <span>
-                          <strong>
-                            {e.node_id || "系统"} ·{" "}
-                            {names[e.event_type] || e.event_type}
-                          </strong>
-                          <small>{e.instance_id || e.event_id}</small>
-                        </span>
-                        <ChevronRight size={13} />
-                      </button>
-                    ))}
-                  </div>
+                  {events.value && list.length > 0 && (
+                    <RunTrack
+                      events={list}
+                      activeIndex={index}
+                      streaming={playing}
+                      onSelect={(e) => {
+                        setPlaying(false);
+                        const i = list.findIndex(
+                          (item) => item.event_id === e.event_id,
+                        );
+                        if (i >= 0) select(i);
+                        setDrawer(true);
+                      }}
+                    />
+                  )}
                   {events.value && list.length === 0 && (
                     <Empty title="该运行没有可用事件" />
                   )}

@@ -1,0 +1,475 @@
+{
+  "submit": {
+    "valid": {
+      "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "strategy_id": "project-planning",
+      "task": {
+        "task_id": "task-web-1",
+        "task_type": "project_planning",
+        "instruction": "为双人小队生成网站上线排期",
+        "input_schema": { "id": "project-planning-input", "version": "1" },
+        "inputs": {
+          "goal": "网站上线",
+          "deadline_hour": 24,
+          "budget_minor": 80000,
+          "currency": "CNY",
+          "people": [
+            {
+              "person_id": "alice",
+              "skills": ["design", "code"],
+              "hourly_cost_minor": 10000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            }
+          ],
+          "work_items": [
+            {
+              "work_id": "w1",
+              "description": "页面设计",
+              "duration_hours": 4,
+              "required_skills": ["design"],
+              "dependencies": []
+            },
+            {
+              "work_id": "w2",
+              "description": "开发实现",
+              "duration_hours": 8,
+              "required_skills": ["code"],
+              "dependencies": ["w1"]
+            }
+          ],
+          "milestones": [
+            { "milestone_id": "m1", "work_ids": ["w2"], "deadline_hour": 20 }
+          ]
+        }
+      }
+    },
+    "unknown_dependency": {
+      "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "strategy_id": "project-planning",
+      "task": {
+        "task_id": "task-web-2",
+        "task_type": "project_planning",
+        "instruction": "依赖引用未知工作项",
+        "input_schema": { "id": "project-planning-input", "version": "1" },
+        "inputs": {
+          "goal": "网站上线",
+          "deadline_hour": 24,
+          "budget_minor": 80000,
+          "currency": "CNY",
+          "people": [
+            {
+              "person_id": "alice",
+              "skills": ["code"],
+              "hourly_cost_minor": 10000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            }
+          ],
+          "work_items": [
+            {
+              "work_id": "w1",
+              "description": "开发实现",
+              "duration_hours": 8,
+              "required_skills": ["code"],
+              "dependencies": ["w9"]
+            }
+          ],
+          "milestones": []
+        }
+      }
+    },
+    "dependency_cycle": {
+      "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "strategy_id": "project-planning",
+      "task": {
+        "task_id": "task-web-3",
+        "task_type": "project_planning",
+        "instruction": "工作项依赖成环",
+        "input_schema": { "id": "project-planning-input", "version": "1" },
+        "inputs": {
+          "goal": "网站上线",
+          "deadline_hour": 24,
+          "budget_minor": 80000,
+          "currency": "CNY",
+          "people": [
+            {
+              "person_id": "alice",
+              "skills": ["code"],
+              "hourly_cost_minor": 10000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            }
+          ],
+          "work_items": [
+            {
+              "work_id": "w1",
+              "description": "前端开发",
+              "duration_hours": 8,
+              "required_skills": ["code"],
+              "dependencies": ["w2"]
+            },
+            {
+              "work_id": "w2",
+              "description": "接口联调",
+              "duration_hours": 4,
+              "required_skills": ["code"],
+              "dependencies": ["w1"]
+            }
+          ],
+          "milestones": []
+        }
+      }
+    },
+    "missing_milestones_field": {
+      "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "strategy_id": "project-planning",
+      "task": {
+        "task_id": "task-web-4",
+        "task_type": "project_planning",
+        "instruction": "缺少必需的里程碑字段",
+        "input_schema": { "id": "project-planning-input", "version": "1" },
+        "inputs": {
+          "goal": "网站上线",
+          "deadline_hour": 24,
+          "budget_minor": 80000,
+          "currency": "CNY",
+          "people": [
+            {
+              "person_id": "alice",
+              "skills": ["code"],
+              "hourly_cost_minor": 10000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            }
+          ],
+          "work_items": [
+            {
+              "work_id": "w1",
+              "description": "开发实现",
+              "duration_hours": 8,
+              "required_skills": ["code"],
+              "dependencies": []
+            }
+          ]
+        }
+      }
+    },
+    "duplicate_person": {
+      "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "strategy_id": "project-planning",
+      "task": {
+        "task_id": "task-web-5",
+        "task_type": "project_planning",
+        "instruction": "人员 ID 重复",
+        "input_schema": { "id": "project-planning-input", "version": "1" },
+        "inputs": {
+          "goal": "网站上线",
+          "deadline_hour": 24,
+          "budget_minor": 80000,
+          "currency": "CNY",
+          "people": [
+            {
+              "person_id": "alice",
+              "skills": ["code"],
+              "hourly_cost_minor": 10000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            },
+            {
+              "person_id": "alice",
+              "skills": ["design"],
+              "hourly_cost_minor": 9000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            }
+          ],
+          "work_items": [
+            {
+              "work_id": "w1",
+              "description": "开发实现",
+              "duration_hours": 8,
+              "required_skills": ["code"],
+              "dependencies": []
+            }
+          ],
+          "milestones": []
+        }
+      }
+    },
+    "bad_request_id": {
+      "request_id": "retry-local-1",
+      "strategy_id": "project-planning",
+      "task": {
+        "task_id": "task-web-6",
+        "task_type": "project_planning",
+        "instruction": "request_id 不是 UUID",
+        "input_schema": { "id": "project-planning-input", "version": "1" },
+        "inputs": {
+          "goal": "网站上线",
+          "deadline_hour": 24,
+          "budget_minor": 80000,
+          "currency": "CNY",
+          "people": [
+            {
+              "person_id": "alice",
+              "skills": ["code"],
+              "hourly_cost_minor": 10000,
+              "available_from_hour": 0,
+              "available_until_hour": 24
+            }
+          ],
+          "work_items": [
+            {
+              "work_id": "w1",
+              "description": "开发实现",
+              "duration_hours": 8,
+              "required_skills": ["code"],
+              "dependencies": []
+            }
+          ],
+          "milestones": []
+        }
+      }
+    }
+  },
+  "views": {
+    "accepted": {
+      "execution_id": "exec-web-1",
+      "run_id": "run-web-1",
+      "strategy_id": "project-planning",
+      "status": "accepted",
+      "phase": "accepted",
+      "created_at": "2026-09-10T08:30:00Z",
+      "started_at": null,
+      "finished_at": null,
+      "strategy_ref": null,
+      "last_sequence": -1,
+      "sealed_run_id": null,
+      "error_code": null,
+      "safe_message": null,
+      "cancel_requested": false
+    },
+    "running": {
+      "execution_id": "exec-web-1",
+      "run_id": "run-web-1",
+      "strategy_id": "project-planning",
+      "status": "running",
+      "phase": "executing",
+      "created_at": "2026-09-10T08:30:00Z",
+      "started_at": "2026-09-10T08:30:01Z",
+      "finished_at": null,
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 6,
+      "sealed_run_id": null,
+      "error_code": null,
+      "safe_message": null,
+      "cancel_requested": false
+    },
+    "reconnect_running": {
+      "execution_id": "exec-web-1",
+      "run_id": "run-web-1",
+      "strategy_id": "project-planning",
+      "status": "running",
+      "phase": "evaluating",
+      "created_at": "2026-09-10T08:30:00Z",
+      "started_at": "2026-09-10T08:30:01Z",
+      "finished_at": null,
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 12,
+      "sealed_run_id": null,
+      "error_code": null,
+      "safe_message": null,
+      "cancel_requested": false
+    },
+    "success": {
+      "execution_id": "exec-web-1",
+      "run_id": "run-web-1",
+      "strategy_id": "project-planning",
+      "status": "completed",
+      "phase": "terminal",
+      "created_at": "2026-09-10T08:30:00Z",
+      "started_at": "2026-09-10T08:30:01Z",
+      "finished_at": "2026-09-10T08:31:12Z",
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 18,
+      "sealed_run_id": "run-web-1",
+      "error_code": null,
+      "safe_message": null,
+      "cancel_requested": false
+    },
+    "evaluation_failed": {
+      "execution_id": "exec-web-2",
+      "run_id": "run-web-2",
+      "strategy_id": "project-planning",
+      "status": "completed",
+      "phase": "terminal",
+      "created_at": "2026-09-10T08:32:00Z",
+      "started_at": "2026-09-10T08:32:01Z",
+      "finished_at": "2026-09-10T08:33:40Z",
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 18,
+      "sealed_run_id": "run-web-2",
+      "error_code": null,
+      "safe_message": null,
+      "cancel_requested": false
+    },
+    "timed_out": {
+      "execution_id": "exec-web-3",
+      "run_id": "run-web-3",
+      "strategy_id": "project-planning",
+      "status": "timed_out",
+      "phase": "terminal",
+      "created_at": "2026-09-10T08:34:00Z",
+      "started_at": "2026-09-10T08:34:01Z",
+      "finished_at": "2026-09-10T08:35:00Z",
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 14,
+      "sealed_run_id": "run-web-3",
+      "error_code": "timeout",
+      "safe_message": "执行超过配置的超时预算，已完成产物已封存",
+      "cancel_requested": false
+    },
+    "cancelled": {
+      "execution_id": "exec-web-4",
+      "run_id": "run-web-4",
+      "strategy_id": "project-planning",
+      "status": "cancelled",
+      "phase": "terminal",
+      "created_at": "2026-09-10T08:36:00Z",
+      "started_at": "2026-09-10T08:36:01Z",
+      "finished_at": "2026-09-10T08:37:05Z",
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 11,
+      "sealed_run_id": "run-web-4",
+      "error_code": null,
+      "safe_message": "用户请求取消，Run 已按取消终态封存",
+      "cancel_requested": true
+    },
+    "interrupted": {
+      "execution_id": "exec-web-5",
+      "run_id": "run-web-5",
+      "strategy_id": "project-planning",
+      "status": "interrupted",
+      "phase": "terminal",
+      "created_at": "2026-09-10T08:38:00Z",
+      "started_at": "2026-09-10T08:38:01Z",
+      "finished_at": "2026-09-10T09:00:00Z",
+      "strategy_ref": { "strategy_id": "project-planning", "version": 0 },
+      "last_sequence": 7,
+      "sealed_run_id": null,
+      "error_code": "interrupted",
+      "safe_message": "服务进程中断，遗留作业按封存事实修复；未确认的模型调用不会自动重放",
+      "cancel_requested": false
+    },
+    "missing_seal": {
+      "execution_id": "exec-web-6",
+      "run_id": "run-web-6",
+      "strategy_id": "project-planning",
+      "status": "interrupted",
+      "phase": "terminal",
+      "created_at": "2026-09-10T08:40:00Z",
+      "started_at": null,
+      "finished_at": "2026-09-10T09:00:00Z",
+      "strategy_ref": null,
+      "last_sequence": -1,
+      "sealed_run_id": null,
+      "error_code": "seal_missing",
+      "safe_message": "执行未开始即中断，未获得 SealedRun；请通过工作台核对历史证据",
+      "cancel_requested": false
+    }
+  },
+  "events": {
+    "running_page": {
+      "items": [
+        {
+          "event_id": "evt-1",
+          "event_type": "team_created",
+          "timestamp": "2026-09-10T08:30:01Z",
+          "sequence": 0,
+          "run_id": "run-web-1",
+          "node_id": null,
+          "instance_id": null,
+          "caused_by": [],
+          "node_state": null,
+          "output": null,
+          "config": {
+            "enabled_nodes": ["planner", "executor", "critic"],
+            "edges": [
+              { "source": "planner", "target": "executor" },
+              { "source": "executor", "target": "critic" }
+            ]
+          }
+        },
+        {
+          "event_id": "evt-4",
+          "event_type": "agent_completed",
+          "timestamp": "2026-09-10T08:30:24Z",
+          "sequence": 3,
+          "run_id": "run-web-1",
+          "node_id": "planner",
+          "instance_id": "planner-1",
+          "caused_by": ["evt-2", "evt-3"],
+          "node_state": "completed",
+          "output": {
+            "summary": "识别 2 个工作项、1 名人员与 2 条硬约束",
+            "constraint_refs": ["deadline", "skill"]
+          },
+          "config": null
+        },
+        {
+          "event_id": "evt-5",
+          "event_type": "agent_started",
+          "timestamp": "2026-09-10T08:30:25Z",
+          "sequence": 4,
+          "run_id": "run-web-1",
+          "node_id": "executor",
+          "instance_id": "executor-1",
+          "caused_by": ["evt-4"],
+          "node_state": "running",
+          "output": null,
+          "config": null
+        }
+      ],
+      "next_after_sequence": 4,
+      "terminal": false
+    },
+    "terminal_page": {
+      "items": [
+        {
+          "event_id": "evt-16",
+          "event_type": "evaluation_completed",
+          "timestamp": "2026-09-10T08:31:10Z",
+          "sequence": 16,
+          "run_id": "run-web-1",
+          "node_id": null,
+          "instance_id": null,
+          "caused_by": ["evt-15"],
+          "node_state": null,
+          "output": { "success": true, "hard_constraint_errors": 0 },
+          "config": null
+        },
+        {
+          "event_id": "evt-18",
+          "event_type": "run_sealed",
+          "timestamp": "2026-09-10T08:31:12Z",
+          "sequence": 18,
+          "run_id": "run-web-1",
+          "node_id": null,
+          "instance_id": null,
+          "caused_by": ["evt-16"],
+          "node_state": null,
+          "output": null,
+          "config": null
+        }
+      ],
+      "next_after_sequence": 18,
+      "terminal": true
+    },
+    "empty_page": {
+      "items": [],
+      "next_after_sequence": -1,
+      "terminal": false
+    }
+  }
+}

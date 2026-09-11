@@ -52,7 +52,7 @@ export function Strategies() {
       />
       {!strategyId ? (
         <Empty title="尚未选择策略">
-          <Link to="/runs">从运行记录选择策略 →</Link>
+          <Link to="/dashboard/runs">从运行记录选择策略 →</Link>
         </Empty>
       ) : (
         <>
@@ -141,7 +141,7 @@ export function Strategies() {
                   </p>
                   <Link
                     className="view-link"
-                    to={`/evolutions?strategy_id=${encodeURIComponent(strategyId)}`}
+                    to={`/dashboard/evolutions?strategy_id=${encodeURIComponent(strategyId)}`}
                   >
                     查看验证比较 <ArrowRight size={14} />
                   </Link>

@@ -46,7 +46,7 @@ export function RunDetail() {
   }
   return (
     <>
-      <Link className="back-link" to="/runs">
+      <Link className="back-link" to="/dashboard/runs">
         <ArrowLeft size={14} /> 运行记录
       </Link>
       <PageTitle
@@ -55,7 +55,7 @@ export function RunDetail() {
         actions={
           <>
             <Button asChild variant="default">
-              <Link to={`/runs/${encodeURIComponent(runId)}/trace`}>
+              <Link to={`/dashboard/runs/${encodeURIComponent(runId)}/trace`}>
                 <Network size={16} />
                 查看 Trace
               </Link>
@@ -79,7 +79,7 @@ export function RunDetail() {
             <Badge value={r.purpose} />
             <Link
               className="version-link"
-              to={`/strategies/${r.strategy.strategy_id}`}
+              to={`/dashboard/strategies/${r.strategy.strategy_id}`}
             >
               Strategy v{r.strategy.version}
             </Link>

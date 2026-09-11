@@ -39,6 +39,17 @@ def test_read_evidence_and_export_without_writes(tmp_path):
         assert detail["data"]["nodes"][0]["role"] == "planner"
         events = client.get(f"/v1/runs/{sealed.run_id}/events").json()["data"]["items"]
         assert events and events == sorted(events, key=lambda e: e["sequence"])
+        assert all("payload" not in item for item in events)
+        states = {e["event_type"]: e["node_state"] for e in events}
+        assert states["agent_started"] == "running"
+        assert states["agent_completed"] == "completed"
+        assert states["run_finished"] is None
+        team = next(e for e in events if e["event_type"] == "team_created")
+        assert team["config"]["enabled_nodes"] == ["planner", "executor", "critic"]
+        completed = [e for e in events if e["event_type"] == "agent_completed"]
+        assert any(e["output"] and "summary" in e["output"] for e in completed)
+        assert any(e["output"] and e["output"].get("schedule") for e in completed)
+        assert any(e["output"] and "passed" in e["output"] for e in completed)
         export = client.get(f"/v1/runs/{sealed.run_id}/export")
         assert export.status_code == 200
         assert "attachment" in export.headers["content-disposition"]

@@ -8,6 +8,7 @@ import {
   Database,
   PanelLeftClose,
   Menu,
+  MessageSquare,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -17,21 +18,22 @@ export function Layout() {
   const location = useLocation();
   const [menu, setMenu] = useState(false);
   const [info, setInfo] = useState(false);
-  const run = location.pathname.match(/^\/runs\/([^/]+)/)?.[1];
+  const run = location.pathname.match(/^\/dashboard\/runs\/([^/]+)/)?.[1];
   const strategy =
     new URLSearchParams(location.search).get("strategy_id") || defaultStrategy;
   const nav = [
-    { to: "/runs", label: "运行记录", icon: Activity },
+    { to: "/", label: "会话工作区", icon: MessageSquare },
+    { to: "/dashboard/runs", label: "运行记录", icon: Activity },
     {
-      to: run ? `/runs/${run}/trace` : "/trace",
+      to: run ? `/dashboard/runs/${run}/trace` : "/dashboard/trace",
       label: "团队与 Trace",
       icon: Network,
     },
-    { to: "/evolutions", label: "演进证据", icon: GitBranch },
+    { to: "/dashboard/evolutions", label: "演进证据", icon: GitBranch },
     {
       to: strategy
-        ? `/strategies/${encodeURIComponent(strategy)}`
-        : "/strategies",
+        ? `/dashboard/strategies/${encodeURIComponent(strategy)}`
+        : "/dashboard/strategies",
       label: "版本与指标",
       icon: Layers3,
     },
@@ -42,7 +44,7 @@ export function Layout() {
         跳到内容
       </a>
       <aside className={`sidebar ${menu ? "is-open" : ""}`}>
-        <NavLink className="brand" to="/runs" onClick={() => setMenu(false)}>
+        <NavLink className="brand" to="/" onClick={() => setMenu(false)}>
           <span className="brand-mark">
             <Network size={23} />
           </span>
@@ -50,7 +52,7 @@ export function Layout() {
             Evo<span className="brand-accent">Team</span>
           </span>
         </NavLink>
-        <div className="sidebar-caption">证据工作台</div>
+        <div className="sidebar-caption">后台工作台</div>
         <nav aria-label="主导航">
           {nav.map(({ to, label, icon: Icon }) => (
             <NavLink
@@ -58,7 +60,7 @@ export function Layout() {
               aria-label={label}
               to={to}
               className={({ isActive }) =>
-                `nav-item ${isActive && !(to === "/runs" && location.pathname.endsWith("/trace")) ? "active" : ""}`
+                `nav-item ${isActive && !(to === "/dashboard/runs" && location.pathname.endsWith("/trace")) ? "active" : ""}`
               }
               onClick={() => setMenu(false)}
             >
@@ -109,7 +111,7 @@ export function Layout() {
             <PanelLeftClose size={16} className="desktop-icon" />
             <span>EvoTeam</span>
             <span className="muted">/</span>
-            <strong>证据工作台</strong>
+            <strong>后台工作台</strong>
           </div>
           <button
             className={`source-chip ${source === "fixture" ? "fixture" : ""}`}

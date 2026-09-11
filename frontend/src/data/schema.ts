@@ -90,6 +90,14 @@ export const runSchema = z.object({
           end_hour: z.number(),
         }),
       ),
+      milestones: z
+        .array(
+          z.object({
+            milestone_id: z.string(),
+            completion_hour: z.number(),
+          }),
+        )
+        .optional(),
       risks: z.array(z.string()),
       adjustments: z.array(z.string()),
       validation_notes: z.array(z.string()),
@@ -104,6 +112,8 @@ export const runSchema = z.object({
         instance_id: z.string(),
         node_id: z.string(),
         state: z.string(),
+        input_tokens: z.number().nullable().optional(),
+        output_tokens: z.number().nullable().optional(),
         messages: z.array(
           z.object({
             message_id: z.string(),
@@ -127,6 +137,9 @@ export const eventSchema = z.object({
   node_id: z.string().nullable(),
   instance_id: z.string().nullable(),
   caused_by: z.array(z.string()),
+  node_state: z.string().nullable().optional(),
+  output: z.unknown().nullable().optional(),
+  config: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 export const strategySchema = z.object({
   metadata: z.object({
