@@ -15,7 +15,9 @@ const Evolutions = React.lazy(() =>
 );
 import { Strategies } from "./pages/strategies";
 import { Empty } from "./components/evidence/common";
+import { SessionWorkspace } from "./pages/session-workspace";
 import "./styles/theme.css";
+import "./styles/workspace.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -27,8 +29,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       >
         <Routes>
+          {/* V3 §24: the product entry is the Session workspace; the
+              evidence dashboard remains reachable and unchanged. */}
+          <Route path="/" element={<Navigate to="/sessions" replace />} />
+          <Route path="/sessions" element={<SessionWorkspace />} />
+          <Route path="/sessions/:sessionId" element={<SessionWorkspace />} />
           <Route element={<Layout />}>
-            <Route index element={<Navigate to="/runs" replace />} />
             <Route path="runs" element={<Runs />} />
             <Route path="runs/:runId" element={<RunDetail />} />
             <Route path="runs/:runId/trace" element={<Trace />} />

@@ -1,0 +1,1089 @@
+/* Session Workspace shell — EVOTEAM_FRONTEND_IMPLEMENTATION_SPEC_V3 §4–§12.
+   Scoped layout only: never inherits legacy `main { padding }` / footer /
+   PageTitle dashboard language. Colors reuse theme.css semantic tokens. */
+
+.ws-shell {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* ---------- Sidebar (V3 §6): 206px fixed ---------- */
+.ws-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: var(--workspace-sidebar-width);
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+.ws-brand {
+  height: var(--workspace-topbar-height);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.8px;
+  color: #23353e;
+}
+.ws-brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #eaf1f3;
+  color: var(--primary);
+  flex: none;
+}
+.ws-new-session {
+  margin: 4px 12px 0;
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: #455e6b;
+  font-size: 12.5px;
+  font-weight: 550;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+.ws-new-session:hover {
+  background: var(--workspace-hover);
+  border-color: #c2d2d9;
+}
+.ws-caption {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: #849099;
+  padding: 12px 13px 6px;
+}
+.ws-workspace-row {
+  flex: none;
+  height: 42px;
+  margin: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: #526573;
+  min-width: 0;
+}
+.ws-workspace-row svg {
+  color: var(--muted);
+  flex: none;
+}
+.ws-workspace-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-session-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+  margin-top: 2px;
+}
+.ws-session-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  max-height: 46px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: #62717e;
+  text-align: left;
+  margin-bottom: 2px;
+  font-weight: 500;
+  transition: background-color 150ms;
+}
+.ws-session-row:hover {
+  background: #f5f7f9;
+}
+.ws-session-row.active {
+  background: var(--workspace-active);
+  color: var(--workspace-active-text);
+  font-weight: 650;
+}
+.ws-session-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ws-session-title {
+  font-size: 12.5px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-session-sub {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-session-status {
+  flex: none;
+  font-size: 10px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ws-session-status.running {
+  color: var(--primary);
+}
+.ws-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  flex: none;
+}
+@keyframes ws-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.ws-status-dot.pulse {
+  animation: ws-pulse 1.4s ease-in-out infinite;
+}
+.ws-sidebar-bottom {
+  flex: none;
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ws-bottom-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 0;
+  background: none;
+  color: #62717e;
+  font-size: 12px;
+  text-align: left;
+  width: 100%;
+  transition: background-color 150ms;
+}
+.ws-bottom-link:hover {
+  background: #f5f7f9;
+}
+.ws-bottom-link svg {
+  flex: none;
+}
+
+/* ---------- Main column: topbar 64 + tabs 44 + content ---------- */
+.ws-main {
+  margin-left: var(--workspace-sidebar-width);
+  height: 100vh;
+  min-width: 0;
+  display: grid;
+  grid-template-rows:
+    var(--workspace-topbar-height) var(--workspace-tabs-height) minmax(0, 1fr);
+}
+.ws-topbar {
+  height: var(--workspace-topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  background: #ffffffb3;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+.ws-menu-toggle {
+  display: none;
+}
+.ws-task-title {
+  font-size: 15px;
+  font-weight: 600;
+  max-width: 460px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ws-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.ws-strategy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid #dfe7ec;
+  border-radius: 5px;
+  background: #f6f8fa;
+  color: #5d707c;
+  font-size: 10.5px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+.ws-strategy-badge.candidate {
+  color: #77629f;
+  background: #f4f0fa;
+  border-color: #e7dff1;
+}
+.ws-tabs {
+  height: var(--workspace-tabs-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+.ws-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+.ws-tab {
+  position: relative;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 1px;
+  border: 0;
+  background: none;
+  color: #77848d;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ws-tab:hover {
+  color: #4d5c66;
+}
+.ws-tab.selected {
+  color: var(--primary);
+  font-weight: 650;
+}
+.ws-tab.selected::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--primary);
+}
+.ws-tab.selected.evolution {
+  color: var(--candidate);
+}
+.ws-tab.selected.evolution::after {
+  background: var(--candidate);
+}
+.ws-panel-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.ws-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: #6c7d88;
+  font-size: 12px;
+  white-space: nowrap;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+.ws-panel-toggle:hover {
+  background: var(--workspace-hover);
+}
+.ws-panel-toggle.selected {
+  color: var(--workspace-active-text);
+  background: var(--workspace-active);
+  border-color: #d3e0e5;
+  font-weight: 600;
+}
+
+/* ---------- Content region: chat (+ optional right panel) ---------- */
+.ws-content {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+.ws-view {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+}
+.ws-transcript {
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+}
+.ws-conversation {
+  max-width: var(--workspace-chat-max);
+  margin: 0 auto;
+  padding: 28px 24px 150px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+/* V3 §9: reading width is 860 closed / 760 split, never stretched. */
+.ws-shell.panel-open .ws-conversation {
+  max-width: var(--workspace-chat-max-split);
+}
+.ws-conversation-inner-split {
+  max-width: var(--workspace-chat-max-split);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Empty new-session state (V3 §28) */
+.ws-empty-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 8vh;
+}
+.ws-empty-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #eaf1f3;
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+.ws-empty-title {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+.ws-empty-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 22px;
+}
+.ws-empty-hints {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ws-hint-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: #5d707c;
+  font-size: 12px;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+.ws-hint-chip:hover {
+  background: var(--workspace-hover);
+  border-color: #c2d2d9;
+}
+
+/* ---------- Composer (V3 §10): floating dock above the full-height
+   transcript, as the Trajectory layout rule requires; the 150px transcript
+   bottom padding reserves its live height. ---------- */
+.ws-composer-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  padding: 14px 24px 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(244, 246, 248, 0),
+    var(--background) 32%
+  );
+}
+.ws-shell.panel-open .ws-composer-dock {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0),
+    var(--surface) 32%
+  );
+}
+.ws-composer {
+  width: 100%;
+  max-width: var(--workspace-chat-max);
+}
+.ws-shell.panel-open .ws-composer {
+  max-width: var(--workspace-chat-max-split);
+}
+.ws-composer-box {
+  border: 1px solid #d6dfe5;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 5px 18px rgba(36, 53, 65, 0.06);
+  transition: border-color 150ms;
+}
+.ws-composer-box:focus-within {
+  border-color: #9db9c2;
+}
+.ws-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+.ws-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  background: #f0f4f6;
+  border: 1px solid #e0e7eb;
+  color: #5d707c;
+  font-size: 11px;
+}
+.ws-composer-input {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 10px 14px 4px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 22px;
+  resize: none;
+  min-width: 0;
+}
+.ws-composer-input::placeholder {
+  color: #8b959d;
+}
+.ws-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px 7px;
+}
+.ws-composer-spacer {
+  flex: 1;
+}
+.ws-tool-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #647581;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background-color 150ms;
+}
+.ws-tool-button:hover {
+  background: var(--workspace-hover);
+}
+.ws-send-button {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  transition: background-color 150ms;
+}
+.ws-send-button:hover {
+  background: #245d66;
+}
+.ws-send-button:disabled {
+  background: #c5d3d8;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* ---------- Right contextual side panel (V3 §11–§12) ---------- */
+.ws-resizer {
+  flex: none;
+  width: 1px;
+  background: var(--border);
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+.ws-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  right: -2px;
+}
+.ws-resizer:hover,
+.ws-resizer.dragging {
+  background: var(--primary);
+}
+.ws-side-panel {
+  flex: none;
+  height: 100%;
+  min-width: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: grid;
+  grid-template-rows: var(--workspace-tabs-height) minmax(0, 1fr);
+}
+.ws-side-header {
+  height: var(--workspace-tabs-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ws-side-tabs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+}
+.ws-side-tab {
+  position: relative;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  color: #77848d;
+  font-size: 12.5px;
+}
+.ws-side-tab.selected {
+  color: var(--primary);
+  font-weight: 650;
+}
+.ws-side-tab.selected::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--primary);
+}
+.ws-side-close {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #647581;
+}
+.ws-side-close:hover {
+  background: var(--workspace-hover);
+}
+.ws-side-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+.ws-side-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Non-chat views keep full width but their own scroll ownership. */
+.ws-static-view {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* ---------- Mobile scrim ---------- */
+.ws-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #15314540;
+  border: 0;
+  z-index: 29;
+}
+
+/* ---------- Responsive (V3 §27) ---------- */
+@media (max-width: 1279px) {
+  .ws-conversation {
+    padding-bottom: 120px;
+  }
+}
+@media (max-width: 1023px) {
+  .ws-sidebar {
+    transform: translateX(-100%);
+    transition: transform 180ms;
+    width: 230px;
+  }
+  .ws-sidebar.is-open {
+    transform: translateX(0);
+  }
+  .ws-scrim.visible {
+    display: block;
+  }
+  .ws-main {
+    margin-left: 0;
+  }
+  .ws-menu-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #526573;
+    flex: none;
+  }
+  .ws-side-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    box-shadow: -8px 0 35px #172b4014;
+    width: min(420px, 92vw) !important;
+  }
+  .ws-resizer {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .ws-topbar {
+    padding: 0 12px;
+  }
+  .ws-task-title {
+    max-width: none;
+    font-size: 14px;
+  }
+  .ws-tabs {
+    padding: 0 12px;
+  }
+  .ws-tab-group {
+    gap: 14px;
+  }
+  .ws-side-panel {
+    width: 100vw !important;
+  }
+  .ws-composer-dock {
+    padding: 10px 12px 14px;
+  }
+  .ws-conversation {
+    padding: 20px 14px 110px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-status-dot.pulse {
+    animation: none;
+  }
+}
+
+/* ---------- Transcript (V3 §9) ---------- */
+.ws-user-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+.ws-user-bubble {
+  max-width: 76%;
+  background: var(--workspace-hover);
+  border: 1px solid var(--border);
+  border-radius: 9px 9px 3px 9px;
+  padding: 10px 13px;
+  font-size: 14px;
+  line-height: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  background: none;
+  padding: 4px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.ws-fold-check {
+  color: #387d66;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-fold-stats {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agent-list {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 14px;
+}
+.ws-agent-block {
+  border-radius: 7px;
+}
+.ws-agent-row {
+  display: grid;
+  grid-template-columns: 18px 110px minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 4px;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  text-align: left;
+  color: var(--foreground);
+  font-size: 12.5px;
+  transition: background-color 150ms;
+}
+.ws-agent-row:hover {
+  background: var(--workspace-hover);
+}
+.ws-agent-glyph {
+  color: var(--muted);
+  margin-left: 2px;
+}
+.ws-agent-role {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-agent-action {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agent-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.ws-agent-process {
+  margin-left: 26px;
+  padding: 2px 0 8px 10px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.ws-step-row {
+  min-height: 28px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+  padding: 3px 0;
+}
+.ws-step-kind {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+  width: 32px;
+}
+.ws-tool-block {
+  min-height: 28px;
+}
+.ws-tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--foreground);
+  border-radius: 5px;
+}
+.ws-tool-row:hover {
+  background: var(--workspace-hover);
+}
+.ws-tool-row svg {
+  color: var(--muted);
+  flex: none;
+}
+.ws-tool-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  flex: none;
+}
+.ws-tool-summary {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-tool-state {
+  flex: none;
+  color: #387d66;
+  display: inline-flex;
+}
+.ws-tool-detail {
+  margin: 2px 0 6px 21px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfd;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.ws-artifact-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  min-height: 30px;
+  margin: 3px 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  font-size: 12.5px;
+  color: #455e6b;
+  max-width: 100%;
+}
+.ws-artifact-row svg {
+  color: var(--primary);
+  flex: none;
+}
+.ws-agent-foot {
+  margin: 6px 0 0 21px;
+}
+.ws-assistant-row {
+  margin-top: 4px;
+}
+.ws-assistant-name {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.ws-assistant-text {
+  font-size: 14px;
+  line-height: 24px;
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+
+/* Locate flash (V3 §18: border flashes twice on locate) */
+@keyframes ws-locate {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  25%,
+  75% {
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+}
+.ws-locate-flash {
+  animation: ws-locate 0.6s ease-in-out 2;
+  border-radius: 7px;
+}
+
+/* ---------- Execution graph (V3 §11) ---------- */
+.ws-graph-wrap {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+  min-height: 0;
+}
+.ws-graph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border-bottom: 1px solid #edf1f4;
+}
+.ws-graph-toolbar .ws-tool-button.selected {
+  color: var(--workspace-active-text);
+  background: var(--workspace-active);
+}
+.ws-graph-canvas {
+  position: relative;
+  min-height: 0;
+  background: #fbfcfd;
+}
+.ws-exec-node {
+  width: 184px;
+  min-height: 62px;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  overflow: hidden;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.ws-exec-node.task {
+  width: 184px;
+  min-height: 44px;
+}
+.ws-exec-node.selected {
+  border-color: #377784;
+  box-shadow: 0 0 0 3px #e6eff2;
+}
+.ws-exec-stripe {
+  width: 3px;
+  flex: none;
+}
+.ws-exec-body {
+  padding: 8px 10px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ws-exec-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-exec-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ws-graph-canvas .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+.ws-graph-canvas .react-flow__edge-path {
+  transition: stroke 150ms;
+}
+
+/* Small text affordances used by the contextual panel */
+.ws-side-note {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.ws-inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ws-inspector-head strong {
+  font-size: 14px;
+}
+body.ws-noscroll {
+  overflow: hidden;
+}

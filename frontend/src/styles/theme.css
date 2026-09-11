@@ -1428,3 +1428,18 @@ th,
     flex-wrap: wrap;
   }
 }
+/* Session Workspace (V3 §17): additive size tokens only. Colors keep the
+   existing semantic tokens above; workspace layout lives in workspace.css. */
+:root {
+  --workspace-sidebar-width: 206px;
+  --workspace-topbar-height: 64px;
+  --workspace-tabs-height: 44px;
+  --workspace-chat-max: 860px;
+  --workspace-chat-max-split: 760px;
+  --workspace-side-default: 420px;
+  --workspace-side-min: 340px;
+  --workspace-side-max: 560px;
+  --workspace-hover: #f1f5f7;
+  --workspace-active: #e9f0f3;
+  --workspace-active-text: #275f68;
+}
