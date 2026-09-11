@@ -82,8 +82,11 @@ export function LiveSessionProvider({
   }, [mode]);
 
   const value = useMemo(
-    () => ({ events, running: running || mode === "replay", start, restart, stop }),
-    [events, running, start, restart, stop, mode],
+    // `running` is owned by the replay state machine: start() sets it,
+    // exhaustion and stop() clear it. Forcing it by mode would leave the
+    // Composer stuck on "Stop" after a finished replay.
+    () => ({ events, running, start, restart, stop }),
+    [events, running, start, restart, stop],
   );
   return (
     <LiveSessionContext.Provider value={value}>

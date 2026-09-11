@@ -129,7 +129,11 @@ function GraphCanvas({
             : null;
         if (key) locateFlowElement(key, { onTimeout: () => selectNode(node.id) });
       }}
-      onMove={onUserMove}
+      onMove={(event) => {
+        // Programmatic moves (fitView/setCenter) report a null event: they
+        // must not cancel Follow Latest. Only a real drag/zoom pauses it.
+        if (event) onUserMove();
+      }}
       fitView
       minZoom={0.45}
       maxZoom={1.4}
