@@ -371,7 +371,8 @@ export function projectConversation(events: AgentEvent[]): Conversation {
       messages: handoffs,
       artifacts,
     },
-    running: !session.finished,
+    // A stream with no agent run is the new-session Hero, not a running turn.
+    running: agents.length > 0 && !session.finished,
   };
 }
 

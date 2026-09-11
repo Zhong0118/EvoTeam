@@ -3,7 +3,7 @@
    stay honest placeholders until their own phases. The Live Execution Graph
    auto-open rule (V3 §11.1) lives with the view that owns the events. */
 import { useEffect, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   SessionWorkspaceProvider,
   useWorkspace,
@@ -59,8 +59,9 @@ function SessionViews({ liveMode }: { liveMode: LiveMode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFirstEvent]);
 
-  if (sessionId === "new")
-    return <Navigate to={`/sessions/${defaultSessionId}`} replace />;
+  // V3 §28: "new" is a real (empty) session, not a redirect to a sample.
+  // sessionById("new") has no status, so liveMode is "idle" — no events
+  // stream, the Hero empty state shows, and the Composer stays ready.
 
   const scriptedBubble =
     liveMode === "idle" ? null : userMessage ?? scriptedUserTask;
