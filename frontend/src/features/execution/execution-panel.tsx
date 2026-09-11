@@ -121,12 +121,23 @@ function GraphCanvas({
       nodeTypes={{ execution: ExecutionNode }}
       onNodeClick={(_, node) => {
         onSelect(node.id);
-        const data = node.data as { agentRunId?: string; eventId?: string };
-        const key = data.agentRunId
-          ? flowKey.agentRun(data.agentRunId)
-          : data.eventId
-            ? flowKey.event(data.eventId)
-            : null;
+        const data = node.data as {
+          agentRunId?: string;
+          eventId?: string;
+          callId?: string;
+          artifactId?: string;
+        };
+        // Same specificity order as ExecutionNode's data-flow-key, or a
+        // Tool node (which carries agentRunId) would locate its owner row.
+        const key = data.callId
+          ? flowKey.tool(data.callId)
+          : data.artifactId
+            ? flowKey.artifact(data.artifactId)
+            : data.agentRunId
+              ? flowKey.agentRun(data.agentRunId)
+              : data.eventId
+                ? flowKey.event(data.eventId)
+                : null;
         if (key) locateFlowElement(key, { onTimeout: () => selectNode(node.id) });
       }}
       onMove={(event) => {

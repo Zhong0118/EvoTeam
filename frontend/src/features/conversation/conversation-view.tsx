@@ -60,7 +60,11 @@ function ToolRow({
       <button
         ref={ref}
         className="ws-tool-row"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open);
+          // Graph locate must work from the Chat side too: same tool: key.
+          if (callId) locateFlowElement(flowKey.tool(callId));
+        }}
         aria-expanded={open}
       >
         {label.startsWith("check") || label.includes("constraint") ? (
