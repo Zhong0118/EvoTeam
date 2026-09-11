@@ -693,6 +693,20 @@
   .ws-conversation {
     padding-bottom: 120px;
   }
+  /* 1024–1279: the panel never squeezes Chat below 620 — it opens as an
+     overlay instead (auto-open is already gated to >=1280 in the page). */
+  .ws-side-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    box-shadow: -8px 0 35px #172b4014;
+    width: min(420px, 45vw) !important;
+  }
+  .ws-resizer {
+    display: none;
+  }
 }
 @media (max-width: 1023px) {
   .ws-sidebar {
@@ -721,16 +735,7 @@
     flex: none;
   }
   .ws-side-panel {
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 40;
-    box-shadow: -8px 0 35px #172b4014;
     width: min(420px, 92vw) !important;
-  }
-  .ws-resizer {
-    display: none;
   }
 }
 @media (max-width: 767px) {
